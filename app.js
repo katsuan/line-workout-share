@@ -15,7 +15,8 @@
 
   const STORAGE_KEYS = {
     history: "liff-workout-history",
-    theme: "liff-workout-theme"
+    theme: "liff-workout-theme",
+    profile: "liff-workout-profile"
   };
 
   const MAX_HISTORY_ITEMS = 10;
@@ -83,7 +84,8 @@
       suppressScrollSpyUntil: 0,
       expandedExerciseId: null,
       memoOpenExerciseIds: {},
-      settingsModalOpen: false
+      settingsModalOpen: false,
+      openHistoryIds: {}
     },
     theme: Object.assign({}, DEFAULT_THEME),
     liff: {
@@ -133,8 +135,10 @@
 
     appState.theme = loadThemePreference();
     applyTheme(appState.theme.baseColor);
+    appState.liff.profile = loadCachedProfile();
     appState.workout = createEmptyWorkout();
     appState.history = loadWorkoutHistory();
+    syncWorkoutUser();
     if (isRankingEnabled()) {
       appState.rankingData = await getRanking();
     }
@@ -158,6 +162,7 @@
     }
 
     syncWorkoutUser();
+    renderInput();
     renderShell();
     renderPreview();
   }
@@ -198,7 +203,11 @@
       appState.liff.ready = true;
       appState.liff.previewOnly = false;
       appState.liff.context = safelyGetLiffContext();
-      appState.liff.profile = await getLiffProfile();
+      const liveProfile = await getLiffProfile();
+      appState.liff.profile =
+        isAnonymousProfile(liveProfile) && !isAnonymousProfile(appState.liff.profile)
+          ? Object.assign({}, appState.liff.profile)
+          : liveProfile;
       appState.liff.shareAvailable = isLiffShareAvailable();
       return appState.liff;
     } catch (error) {
@@ -206,7 +215,9 @@
       appState.liff.ready = false;
       appState.liff.previewOnly = true;
       appState.liff.error = error instanceof Error ? error.message : String(error);
-      appState.liff.profile = Object.assign({}, DEFAULT_USER);
+      appState.liff.profile = isAnonymousProfile(appState.liff.profile)
+        ? Object.assign({}, DEFAULT_USER)
+        : Object.assign({}, appState.liff.profile);
       return appState.liff;
     }
   }
@@ -219,17 +230,49 @@
     try {
       if (window.liff.isLoggedIn && window.liff.isLoggedIn()) {
         const profile = await window.liff.getProfile();
-        return {
+        const normalizedProfile = {
           userId: profile.userId || null,
           displayName: profile.displayName || "anonymous",
           pictureUrl: profile.pictureUrl || null
         };
+        saveCachedProfile(normalizedProfile);
+        return normalizedProfile;
       }
     } catch (error) {
       console.warn("Failed to fetch LIFF profile:", error);
     }
 
     return Object.assign({}, DEFAULT_USER);
+  }
+
+  function loadCachedProfile() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEYS.profile);
+      if (!raw) {
+        return Object.assign({}, DEFAULT_USER);
+      }
+      const parsed = JSON.parse(raw);
+      return Object.assign({}, DEFAULT_USER, parsed || {});
+    } catch (error) {
+      console.warn("Failed to load cached profile:", error);
+      return Object.assign({}, DEFAULT_USER);
+    }
+  }
+
+  function saveCachedProfile(profile) {
+    if (!profile || !profile.displayName || String(profile.displayName).toLowerCase() === "anonymous") {
+      return;
+    }
+    localStorage.setItem(STORAGE_KEYS.profile, JSON.stringify({
+      userId: profile.userId || null,
+      displayName: profile.displayName || "anonymous",
+      pictureUrl: profile.pictureUrl || null
+    }));
+  }
+
+  function isAnonymousProfile(profile) {
+    const displayName = profile ? String(profile.displayName || "").trim().toLowerCase() : "";
+    return !displayName || displayName === "anonymous";
   }
 
   function loadThemePreference() {
@@ -461,6 +504,12 @@
   }
 
   function removeExercise(exerciseId) {
+    if (appState.workout.exercises.length > 1) {
+      const shouldRemove = window.confirm("この種目を削除しますか？");
+      if (!shouldRemove) {
+        return;
+      }
+    }
     if (appState.workout.exercises.length === 1) {
       appState.workout.exercises = [createEmptyExercise()];
       appState.ui.expandedExerciseId = appState.workout.exercises[0].exerciseId;
@@ -501,6 +550,13 @@
     });
     if (!exercise) {
       return;
+    }
+
+    if (exercise.sets.length > 1) {
+      const shouldRemove = window.confirm("このセットを削除しますか？");
+      if (!shouldRemove) {
+        return;
+      }
     }
 
     if (exercise.sets.length === 1) {
@@ -1104,6 +1160,9 @@
         break;
       case "delete-history":
         deleteHistory(button.getAttribute("data-workout-id"));
+        break;
+      case "toggle-history-card":
+        toggleHistoryCard(button.getAttribute("data-workout-id"));
         break;
       case "change-ranking-period":
         changeRankingPeriod(button.getAttribute("data-period"));
@@ -1827,7 +1886,7 @@
         escapeHtml(exerciseId) +
         '" data-set-id="' +
         escapeHtml(set.setId) +
-        '"><small class="metric-label">RM(kg)</small><strong class="metric-value" data-set-summary="estimated1rm" data-exercise-id="' +
+        '"><small class="metric-label">RM</small><strong class="metric-value" data-set-summary="estimated1rm" data-exercise-id="' +
         escapeHtml(exerciseId) +
         '" data-set-id="' +
         escapeHtml(set.setId) +
@@ -2032,9 +2091,12 @@
   }
 
   function renderHistoryCard(workout) {
+    const isOpen = Boolean(appState.ui.openHistoryIds[workout.workoutId]);
     return [
-      '<details class="history-card history-card-accordion">',
-      '  <summary class="history-card-head history-card-summary">',
+      '<article class="history-card history-card-accordion' +
+        (isOpen ? " is-open" : "") +
+        '">',
+      '  <div class="history-card-head history-card-summary">',
       '    <div class="history-card-copy">',
       '      <p class="history-meta history-meta-inline">' +
         escapeHtml(workout.date || "-") +
@@ -2043,24 +2105,34 @@
         "種目</p>",
       "      <h4>" + escapeHtml(resolveWorkoutTitle(workout.title, workout.user)) + "</h4>",
       "    </div>",
-      '    <span class="history-disclosure">開く</span>',
-      "  </summary>",
-      '  <div class="history-card-body">',
-      renderWorkoutExerciseStats(workout),
-      '    <div class="history-actions history-actions-end">',
+      '    <div class="history-actions history-actions-inline">',
       renderActionButton({
-        label: "入力適用",
+        label: "適用",
         icon: "↺",
-        variant: "pill-button",
+        variant: "pill-button history-action-button",
         action: "restore-history",
         attrs: {
           "data-workout-id": workout.workoutId
         }
       }),
       renderActionButton({
+        label: isOpen ? "閉じる" : "開く",
+        icon: isOpen ? "▴" : "▾",
+        variant: "outline-button history-action-button",
+        action: "toggle-history-card",
+        attrs: {
+          "data-workout-id": workout.workoutId
+        }
+      }),
+      "    </div>",
+      "  </div>",
+      '  <div class="history-card-body' + (isOpen ? "" : ' is-hidden') + '">',
+      renderWorkoutExerciseStats(workout),
+      '    <div class="history-actions history-actions-end">',
+      renderActionButton({
         label: "削除",
         icon: "🗑",
-        variant: "danger-button",
+        variant: "danger-button history-action-button",
         action: "delete-history",
         attrs: {
           "data-workout-id": workout.workoutId
@@ -2068,7 +2140,7 @@
       }),
       "    </div>",
       "  </div>",
-      "</details>"
+      "</article>"
     ].join("");
   }
 
@@ -2092,6 +2164,11 @@
       "  </div>",
       "</section>"
     ].join("");
+  }
+
+  function toggleHistoryCard(workoutId) {
+    appState.ui.openHistoryIds[workoutId] = !appState.ui.openHistoryIds[workoutId];
+    renderHistory();
   }
 
   function buildWorkoutBubble(workout, exercises, bubbleIndex, bubbleCount) {
@@ -2641,7 +2718,7 @@
       return "メモを閉じる";
     }
 
-    return hasMemo ? "メモ編集" : "メモ追加";
+    return hasMemo ? "メモ編集" : "＋メモ追加";
   }
 
   function renderExerciseMemoField(exercise) {
