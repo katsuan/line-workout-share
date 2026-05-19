@@ -2108,7 +2108,6 @@
       '    <div class="history-actions history-actions-inline">',
       renderActionButton({
         label: "適用",
-        icon: "↺",
         variant: "pill-button history-action-button",
         action: "restore-history",
         attrs: {
@@ -2117,7 +2116,6 @@
       }),
       renderActionButton({
         label: isOpen ? "閉じる" : "開く",
-        icon: isOpen ? "▴" : "▾",
         variant: "outline-button history-action-button",
         action: "toggle-history-card",
         attrs: {
@@ -2131,7 +2129,6 @@
       '    <div class="history-actions history-actions-end">',
       renderActionButton({
         label: "削除",
-        icon: "🗑",
         variant: "danger-button history-action-button",
         action: "delete-history",
         attrs: {
