@@ -132,6 +132,7 @@
   async function initApp() {
     cacheElements();
     bindEvents();
+    document.title = APP_CONFIG.APP_NAME || "Workout Share";
 
     appState.theme = loadThemePreference();
     applyTheme(appState.theme.baseColor);
@@ -1360,10 +1361,6 @@
       return;
     }
 
-    const currentExercise = findExpandedExercise(appState.workout ? appState.workout.exercises : []);
-    const currentExerciseLabel = currentExercise
-      ? currentExercise.name || "種目選択中"
-      : "未選択";
     const previewCount = countNamedExercises(appState.workout);
 
     elements.tabButtons.forEach(function (button) {
@@ -2084,21 +2081,6 @@
     return ((workout && workout.exercises) || []).filter(function (exercise) {
       return Boolean(String(exercise.name || "").trim());
     }).length;
-  }
-
-  function renderHistoryStatsSection() {
-    return [
-      '<section class="panel-card">',
-      '  <div class="panel-head">',
-      "    <div>",
-      '      <p class="section-label">History Stats</p>',
-      '      <h2 class="panel-title">履歴</h2>',
-      "    </div>",
-      '    <span class="badge">' + escapeHtml(String(appState.history.length)) + "件</span>",
-      "  </div>",
-      '  <p class="preview-note">各履歴から種目ごとのセット数と MAX RM を見返せます。</p>',
-      "</section>"
-    ].join("");
   }
 
   function renderHistoryCard(workout) {
