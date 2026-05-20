@@ -10,6 +10,11 @@
   --primary-dark: #8f4517;
   --primary-soft: #f7dfcf;
   --primary-tint: #fcf3ea;
+  --primary-line: #ddb38f;
+  --primary-outline: #edd7c7;
+  --primary-surface: #fff8f2;
+  --primary-surface-strong: #fcfefc;
+  --primary-fade: #f7f0e8;
   --secondary: #264653;
   --secondary-soft: #e7eef2;
   --share: #06c755;
@@ -125,8 +130,8 @@ button {
 .ranking-card,
 .preview-bubble,
 .summary-card {
-  background: rgba(255, 255, 255, 0.92);
-  border: 1px solid rgba(215, 224, 212, 0.9);
+  background: var(--primary-surface);
+  border: 1px solid var(--primary-outline);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
   backdrop-filter: blur(8px);
@@ -262,9 +267,9 @@ button {
   gap: 6px;
   margin-bottom: 10px;
   padding: 6px;
-  background: rgba(244, 247, 244, 0.92);
+  background: var(--primary-fade);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(215, 224, 212, 0.82);
+  border: 1px solid var(--primary-outline);
   border-radius: 18px;
 }
 
@@ -290,7 +295,7 @@ button {
 }
 
 .tab-button.is-active {
-  background: linear-gradient(180deg, #ffffff 0%, #f7faf6 100%);
+  background: #ffffff;
   color: var(--text);
   box-shadow: 0 8px 18px rgba(31, 42, 31, 0.08);
 }
@@ -338,7 +343,7 @@ button {
 }
 
 .input-card {
-  background: linear-gradient(180deg, rgba(252, 243, 234, 0.98) 0%, rgba(255, 249, 244, 0.96) 100%);
+  background: var(--primary-tint);
 }
 
 .panel-head {
@@ -391,9 +396,9 @@ button {
   position: relative;
   gap: 6px;
   padding: 12px 14px 10px;
-  border: 1.5px solid rgba(214, 132, 82, 0.72);
+  border: 1.5px solid var(--primary-line);
   border-radius: 18px;
-  background: linear-gradient(180deg, rgba(255, 250, 246, 0.98) 0%, rgba(255, 255, 255, 0.96) 100%);
+  background: var(--primary-surface);
 }
 
 .tile-field .field-label,
@@ -404,7 +409,7 @@ button {
   display: inline-flex;
   align-items: center;
   padding: 0 6px;
-  background: #fff8f2;
+  background: var(--primary-surface);
   color: var(--primary-dark);
   font-size: 0.73rem;
   font-weight: 700;
@@ -472,8 +477,7 @@ button {
 
 .exercise-card {
   padding: 10px 12px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 251, 247, 0.96) 100%);
+  background: #ffffff;
 }
 
 .exercise-header,
@@ -519,8 +523,8 @@ button {
   gap: 2px;
   padding: 8px 10px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(201, 106, 45, 0.16);
+  background: var(--primary-surface);
+  border: 1px solid var(--primary-outline);
   position: sticky;
   top: 72px;
   z-index: 8;
@@ -562,7 +566,7 @@ button {
   display: grid;
   gap: 12px;
   padding: 14px;
-  border: 1px solid rgba(215, 224, 212, 0.92);
+  border: 1px solid var(--primary-outline);
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 20px 42px rgba(31, 42, 31, 0.16);
@@ -648,9 +652,9 @@ button {
 .set-row {
   display: block;
   padding: 10px;
-  border: 1px solid rgba(215, 224, 212, 0.96);
+  border: 1px solid var(--primary-outline);
   border-radius: 16px;
-  background: #fcfefc;
+  background: var(--primary-surface-strong);
 }
 
 .set-row-main {
@@ -693,7 +697,7 @@ button {
   display: inline-flex;
   align-items: center;
   padding: 0 4px;
-  background: #fcfefc;
+  background: var(--primary-surface-strong);
   color: var(--primary-dark);
   font-size: 0.73rem;
   font-weight: 700;
@@ -825,8 +829,8 @@ button {
 }
 
 .selection-shell {
-  background: rgba(252, 243, 234, 0.6);
-  border: 1px dashed rgba(201, 106, 45, 0.28);
+  background: var(--primary-tint);
+  border: 1px dashed var(--primary-outline);
 }
 
 .exercise-option-list {
@@ -841,9 +845,9 @@ button {
   justify-content: flex-start;
   min-height: 40px;
   padding: 8px 12px;
-  border: 1px dashed rgba(214, 132, 82, 0.38);
+  border: 1px dashed var(--primary-line);
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.92);
+  background: var(--primary-surface);
   color: var(--text);
   text-align: left;
   flex: 1 1 calc(50% - 8px);
@@ -891,8 +895,8 @@ button {
   gap: 8px;
   padding: 10px 12px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.62);
-  border: 1px solid rgba(201, 106, 45, 0.14);
+  background: var(--primary-surface);
+  border: 1px solid var(--primary-outline);
 }
 
 .exercise-toggle-button {
@@ -911,9 +915,9 @@ button {
   position: relative;
   gap: 6px;
   padding: 12px 12px 8px;
-  border: 1.5px solid rgba(214, 132, 82, 0.72);
+  border: 1.5px solid var(--primary-line);
   border-radius: 16px;
-  background: linear-gradient(180deg, rgba(255, 250, 246, 0.98) 0%, rgba(255, 255, 255, 0.96) 100%);
+  background: var(--primary-surface);
 }
 
 .memo-field .field-label {
@@ -923,7 +927,7 @@ button {
   display: inline-flex;
   align-items: center;
   padding: 0 6px;
-  background: #fff8f2;
+  background: var(--primary-surface);
   color: var(--primary-dark);
   font-size: 0.73rem;
   font-weight: 700;
@@ -948,7 +952,7 @@ button {
 .add-set-button {
   border-color: transparent;
   color: var(--primary-dark);
-  background: rgba(255, 255, 255, 0.64);
+  background: var(--primary-surface);
 }
 
 .input-utility-title {
@@ -1363,9 +1367,9 @@ details.json-accordion summary::-webkit-details-marker {
 }
 
 .action-button.ghost {
-  background: #ffffff;
+  background: var(--primary-surface);
   color: var(--text);
-  border: 1px solid var(--line);
+  border: 1px solid var(--primary-outline);
 }
 
 .action-button.is-hidden {
@@ -1400,7 +1404,7 @@ details.json-accordion summary::-webkit-details-marker {
     width: min(860px, calc(100vw - 32px));
     transform: translateX(-50%);
     grid-template-columns: 1fr;
-    border: 1px solid rgba(215, 224, 212, 0.96);
+    border: 1px solid var(--primary-outline);
     border-radius: 24px;
   }
 

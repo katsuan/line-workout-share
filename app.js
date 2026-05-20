@@ -320,6 +320,11 @@
     root.style.setProperty("--primary-dark", theme.primaryDark);
     root.style.setProperty("--primary-soft", theme.primarySoft);
     root.style.setProperty("--primary-tint", theme.primaryTint);
+    root.style.setProperty("--primary-line", theme.primaryLine);
+    root.style.setProperty("--primary-outline", theme.primaryOutline);
+    root.style.setProperty("--primary-surface", theme.primarySurface);
+    root.style.setProperty("--primary-surface-strong", theme.primarySurfaceStrong);
+    root.style.setProperty("--primary-fade", theme.primaryFade);
     root.style.setProperty("--bg-accent", theme.bgAccent);
   }
 
@@ -329,6 +334,11 @@
       primaryDark: adjustColorLightness(baseColor, -0.24),
       primarySoft: mixColors(baseColor, "#FFFFFF", 0.76),
       primaryTint: mixColors(baseColor, "#FFF8F1", 0.9),
+      primaryLine: mixColors(baseColor, "#BFC8BF", 0.52),
+      primaryOutline: mixColors(baseColor, "#E6D6C8", 0.72),
+      primarySurface: mixColors(baseColor, "#FFF9F3", 0.92),
+      primarySurfaceStrong: mixColors(baseColor, "#FCFEFC", 0.94),
+      primaryFade: mixColors(baseColor, "#F7F0E8", 0.86),
       bgAccent: mixColors(baseColor, "#F4EBDD", 0.88)
     };
   }
