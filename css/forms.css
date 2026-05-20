@@ -392,13 +392,13 @@
 }
 
 .set-remove-button .action-label {
-  display: none;
-}
-
-.set-remove-button .action-icon {
   display: inline;
   font-size: 1rem;
   line-height: 1;
+}
+
+.set-remove-button .action-icon {
+  display: none;
 }
 
 .button-row {
@@ -482,10 +482,6 @@
   flex: 0 1 auto;
   max-width: 100%;
   white-space: normal;
-}
-
-.exercise-option-button.is-wide {
-  flex-basis: 100%;
 }
 
 .compact-action-button .action-icon {
