@@ -1,0 +1,118 @@
+.tab-nav {
+  position: sticky;
+  top: 10px;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+  padding: 6px;
+  background: var(--primary-fade);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--primary-outline);
+  border-radius: 18px;
+}
+
+.tab-nav.has-ranking {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.tab-button {
+  min-height: 44px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 1px;
+  text-align: center;
+  padding: 6px 8px;
+  line-height: 1.1;
+}
+
+.tab-button.is-active {
+  background: #ffffff;
+  color: var(--text);
+  box-shadow: 0 8px 18px rgba(31, 42, 31, 0.08);
+}
+
+.tab-button-main {
+  display: block;
+  font-size: 0.86rem;
+  font-weight: 650;
+}
+
+.tab-button-sub {
+  display: block;
+  max-width: 100%;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-button-sub.is-empty {
+  visibility: hidden;
+}
+
+.tab-panel {
+  display: block;
+  scroll-margin-top: 84px;
+}
+
+.tab-panels {
+  display: grid;
+  gap: 14px;
+}
+
+.panel-card,
+.input-stack,
+.preview-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.panel-card {
+  padding: 14px;
+}
+
+.input-card {
+  background: var(--primary-tint);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.stats-head {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+}
+
+.stats-head .badge {
+  margin-left: auto;
+  flex: 0 0 auto;
+  align-self: center;
+}
+
+.panel-head.compact {
+  margin-bottom: 10px;
+}
+
+.panel-head p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+

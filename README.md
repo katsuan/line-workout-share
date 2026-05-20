@@ -9,11 +9,39 @@ GitHub Pages で配信する、静的なワークアウト共有アプリです�
 
 - 静的ホスティング前提です。
 - サーバー、DB、GAS は未使用です。
-- ファイル構成は以下の 4 ファイルです。
+- 現在は責務ごとに `js/` 配下へ分割しています。
   - `index.html`
   - `style.css`
+    - CSS のエントリーポイント。`css/` 配下の partial を読み込みます。
   - `config.js`
   - `app.js`
+    - エントリーポイント。`js/main.js` を読み込みます。
+  - `css/base.css`
+    - 変数、リセット、全体ベース
+  - `css/navigation.css`
+    - タブ、パネル、ステータス表示
+  - `css/forms.css`
+    - 入力フォーム、種目カード、セットカード、モーダル
+  - `css/content.css`
+    - プレビュー、履歴、STATS、ランキング表示
+  - `css/actions.css`
+    - 固定アクションバー、バッジ
+  - `css/responsive.css`
+    - ブレークポイントごとの調整
+  - `js/constants.js`
+    - 設定値、種目カタログ、 feature flag
+  - `js/theme.js`
+    - ベースカラー設定と CSS 変数反映
+  - `js/liff.js`
+    - LIFF 初期化、プロフィール取得、 shareTargetPicker 利用可否
+  - `js/workout.js`
+    - ワークアウト生成、計算、整形、 Flex Message 生成
+  - `js/repositories.js`
+    - localStorage / API 保存アダプタ
+  - `js/utils.js`
+    - ID 生成、数値変換、エスケープなどの共通関数
+  - `js/main.js`
+    - UI 描画とイベント制御
 
 ### 現在の主な機能
 
@@ -22,13 +50,15 @@ GitHub Pages で配信する、静的なワークアウト共有アプリです�
   - ワークアウトタイトル
   - 種目の複数追加
   - 各エクササイズカード内で「部位 → 種目」の順に選択
+  - 部位 `その他` からの自由入力
   - セットの複数追加
   - 重量、回数、メモ入力
+  - ユーザーアイコンからベースカラー設定
 - 種目候補
-  - `app.js` 内にローカルの種目カタログを保持
+  - `js/constants.js` 内にローカルの種目カタログを保持
   - 日本語名で管理
   - 部位ごとの候補表示
-  - カード形式で選択
+  - ボタン形式で選択
 - プレビュータブ
   - Flex Message の見た目確認
   - 種目ごとの推定 1RM
@@ -36,8 +66,8 @@ GitHub Pages で配信する、静的なワークアウト共有アプリです�
   - ボリュームは送信表示に含めない
 - 履歴タブ
   - `localStorage` に保存した履歴の表示
-  - 再入力
-  - 削除
+  - 初期状態はアコーディオンを閉じて表示
+  - 適用、開閉、削除
 - 共有
   - `liff.shareTargetPicker()` を使用
   - LIFF 利用不可時は共有実行は行わず、プレビュー中心で動作
@@ -46,7 +76,8 @@ GitHub Pages で配信する、静的なワークアウト共有アプリです�
 
 - `liff.init({ liffId: LIFF_ID })` 実行後に LIFF 機能を使用します。
 - ログイン済みかつ `liff.getProfile()` が成功した場合のみ表示名を使います。
-- 取得できない場合は `anonymous` 扱いです。
+- 取得できない場合は内部的に `anonymous` を使います。
+- 取得したプロフィールは `localStorage` にキャッシュします。
 - 外部ブラウザや LIFF 初期化失敗時でも、プレビュー専用モードとして使える設計です。
 
 ### 保存まわり
@@ -60,7 +91,7 @@ GitHub Pages で配信する、静的なワークアウト共有アプリです�
 - デバッグモード時のみ以下を表示します。
   - Flex JSON コピー
   - Flex JSON プレビュー
-  - ランキングタブ
+- ランキングタブは `enableDebugMode` と `enableRanking` の両方が有効なときだけ表示します。
 
 ## 設定
 
@@ -94,7 +125,7 @@ GitHub Pages で配信する、静的なワークアウト共有アプリです�
   title: string,
   user: {
     userId: string | null,
-    displayName: string | null,
+    displayName: string,
     pictureUrl: string | null
   },
   groupKey: string | null,
@@ -102,7 +133,9 @@ GitHub Pages で配信する、静的なワークアウト共有アプリです�
     {
       exerciseId: string,
       catalogId: string,
+      isCustom: boolean,
       primaryMuscle: string,
+      selectionMuscle: string,
       name: string,
       memo: string,
       sets: [
@@ -130,6 +163,7 @@ GitHub Pages で配信する、静的なワークアウト共有アプリです�
 - `estimated1rm = weight + (weight * reps) / 40`
 - 空セット、重量未入力、回数未入力は共有対象外
 - `volume` は内部計算には残すが、現在の送信表示では使わない
+- タイトル未入力時は `displayName's Workout Share` または `Workout Share` を自動補完
 
 ## 現在の UI 方針
 
@@ -137,13 +171,14 @@ GitHub Pages で配信する、静的なワークアウト共有アプリです�
 - 固定アクションバーあり
 - 片手で押しやすい大きめ入力
 - 種目カード / セットカード中心
+- 種目ごとに開閉できる入力フロー
 - ユーザー向け画面では LIFF や開発用語をできるだけ見せない
 
 ## 今後の想定
 
 ### 1. 種目マスタの外出し
 
-現在は `app.js` 内のローカル配列ですが、将来は次を想定しています。
+現在は `js/constants.js` 内のローカル配列ですが、将来は次を想定しています。
 
 - JSON ファイル化
 - API / DB から取得
