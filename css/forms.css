@@ -116,7 +116,7 @@
   margin-bottom: 6px;
 }
 
-.exercise-header > div,
+.exercise-header > div:not(.exercise-actions),
 .exercise-selected-head > div {
   min-width: 0;
   flex: 1;
@@ -125,8 +125,10 @@
 .exercise-actions {
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 6px;
   flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .exercise-title {
@@ -387,6 +389,16 @@
   padding: 0;
   margin-left: 0;
   border-radius: 12px;
+}
+
+.set-remove-button .action-label {
+  display: none;
+}
+
+.set-remove-button .action-icon {
+  display: inline;
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .button-row {

@@ -1417,8 +1417,7 @@ import {
         (setIndex + 1) +
         "</span>",
       renderActionButton({
-        label: "削除",
-        icon: "−",
+        label: "−",
         variant: "danger-button compact-action-button set-remove-button",
         action: "remove-set",
         title: "セット削除",
@@ -1906,10 +1905,8 @@ import {
     const exerciseCards = candidateExercises.length
       ? candidateExercises
         .map(function (item) {
-          const isWide = item.name.length >= 9;
           return (
             '<button class="catalog-chip exercise-option-button' +
-            (isWide ? " is-wide" : "") +
             '" data-action="choose-exercise-card" data-exercise-id="' +
             escapeHtml(exercise.exerciseId) +
             '" data-catalog-id="' +

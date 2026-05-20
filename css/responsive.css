@@ -188,16 +188,6 @@
     display: none;
   }
 
-  .set-remove-button .action-label {
-    display: none;
-  }
-
-  .set-remove-button .action-icon {
-    display: inline;
-    font-size: 1rem;
-    line-height: 1;
-  }
-
   .exercise-actions {
     gap: 6px;
   }
