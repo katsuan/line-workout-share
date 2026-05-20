@@ -898,6 +898,7 @@
       renderInputUtilityActions(),
       "  </section>",
       renderSettingsModal(),
+      renderCurrentExerciseIndicator(workout.exercises),
       renderExerciseStack(workout.exercises),
       "</div>"
     ].join("");
@@ -1358,7 +1359,7 @@
     elements.tabButtons.forEach(function (button) {
       const tab = button.getAttribute("data-tab");
       if (tab === "input") {
-        button.innerHTML = renderTabButtonLabel("入力", "入力中：" + currentExerciseLabel);
+        button.innerHTML = renderTabButtonLabel("入力", "");
       } else if (tab === "preview") {
         button.innerHTML = renderTabButtonLabel("プレビュー", String(previewCount) + "件");
       } else if (tab === "history") {
@@ -2043,7 +2044,7 @@
 
   function renderCurrentExerciseIndicator(exercises) {
     const currentExercise = findExpandedExercise(exercises);
-    if (!currentExercise) {
+    if (!currentExercise || !(currentExercise.catalogId || currentExercise.isCustom)) {
       return "";
     }
 
