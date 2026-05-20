@@ -1908,16 +1908,14 @@ import {
         .map(function (item) {
           const isWide = item.name.length >= 9;
           return (
-            '<button class="exercise-option-button' +
+            '<button class="catalog-chip exercise-option-button' +
             (isWide ? " is-wide" : "") +
             '" data-action="choose-exercise-card" data-exercise-id="' +
             escapeHtml(exercise.exerciseId) +
             '" data-catalog-id="' +
             escapeHtml(item.id) +
             '" type="button">' +
-            '<span class="exercise-option-label">' +
             escapeHtml(item.name) +
-            "</span>" +
             "</button>"
           );
         })
