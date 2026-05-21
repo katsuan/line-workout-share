@@ -459,11 +459,21 @@ function estimateExerciseFlexUnits(exercise) {
 }
 
 function buildWorkoutAltText(workout) {
-  const title = resolveWorkoutTitle(workout.title, workout.user);
+  const rawTitle = String((workout && workout.title) || "").trim();
+  const title = resolveWorkoutTitle(rawTitle, workout.user);
   const displayName = workout && workout.user ? String(workout.user.displayName || "").trim() : "";
 
   if (displayName && displayName.toLowerCase() !== "anonymous") {
-    return displayName + "'s " + title;
+    if (!rawTitle) {
+      return title;
+    }
+
+    const senderPrefix = displayName + "'s ";
+    if (title.toLowerCase().startsWith(senderPrefix.toLowerCase())) {
+      return title;
+    }
+
+    return senderPrefix + title;
   }
 
   return (workout.date || getTodayLocalDate()) + " " + title;
