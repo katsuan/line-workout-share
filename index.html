@@ -15,7 +15,6 @@
 
       <nav class="tab-nav" id="tab-nav" aria-label="メインタブ">
         <button class="tab-button is-active" data-tab="input" type="button">入力</button>
-        <button class="tab-button" data-tab="preview" type="button">プレビュー</button>
         <button class="tab-button" data-tab="history" type="button">履歴</button>
         <button class="tab-button" id="tab-button-ranking" data-tab="ranking" type="button" hidden>
           ランキング
@@ -23,8 +22,9 @@
       </nav>
 
       <main class="tab-panels">
-        <section class="tab-panel is-active" id="tab-input"></section>
+        <!-- 送信プレビューは入力の一番上に置く（入力しながら送る中身を確かめられる） -->
         <section class="tab-panel" id="tab-preview" hidden></section>
+        <section class="tab-panel is-active" id="tab-input"></section>
         <section class="tab-panel" id="tab-history" hidden></section>
         <section class="tab-panel" id="tab-ranking" hidden></section>
       </main>

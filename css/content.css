@@ -291,3 +291,120 @@ details.json-accordion summary::-webkit-details-marker {
   text-align: left;
 }
 
+/* 送信プレビュー：おくるカード(line-share)と同じ LINE のトーク画面に近い枠 */
+.talk-preview {
+  display: grid;
+  gap: 10px;
+  padding: 12px 12px 14px;
+  border-radius: 20px;
+  background: #8fabd3;
+}
+
+.talk-preview-head {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+}
+
+.talk-preview-label {
+  grid-column: 2;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.18);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.talk-preview-toggle {
+  grid-column: 3;
+  justify-self: end;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  color: #33415c;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.talk-preview-note {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.talk-preview-note.is-warn {
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #9a3412;
+  font-weight: 700;
+}
+
+.talk-preview.is-closed {
+  gap: 6px;
+}
+
+/* 集計（ふだんは閉じて、入力欄までの距離を短くする） */
+.metrics-card {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.metrics-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.metrics-toggle-title {
+  flex: 1;
+}
+
+.metrics-toggle-arrow {
+  color: var(--text-muted, #8a7a6a);
+  font-size: 12px;
+}
+
+.metrics-card .stats-list {
+  margin: 6px 0 10px;
+}
+
+/* 複数カード（カルーセル）は LINE と同じく横スクロール */
+.talk-carousel {
+  display: flex;
+  gap: 10px;
+  margin: 0 -12px;
+  padding: 2px 12px 6px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding: 0 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.talk-carousel-item {
+  flex: 0 0 86%;
+  min-width: 0;
+  scroll-snap-align: start;
+}
+
+.talk-carousel-item .preview-bubble {
+  height: 100%;
+  margin: 0;
+}

@@ -4,7 +4,8 @@ import {
   DEFAULT_USER,
   EXERCISE_CATALOG,
   FEATURE_FLAGS,
-  MUSCLE_FILTERS
+  MUSCLE_FILTERS,
+  STORAGE_KEYS
 } from "./constants.js";
 import {
   applyTheme as applyThemeToDocument,
@@ -51,6 +52,8 @@ import {
     },
     ui: {
       openJsonPreview: false,
+      previewOpen: loadPreviewOpen(),
+      metricsOpen: false,
       catalogFilter: "all",
       catalogQuery: "",
       suppressScrollSpyUntil: 0,
@@ -168,6 +171,23 @@ import {
     });
     appState.liff = Object.assign({}, appState.liff, nextState);
     return appState.liff;
+  }
+
+  // 送信プレビューを開いておくか（端末に覚える。保存できなくても開いた状態で動く）
+  function loadPreviewOpen() {
+    try {
+      return window.localStorage.getItem(STORAGE_KEYS.previewOpen) !== "false";
+    } catch (error) {
+      return true;
+    }
+  }
+
+  function savePreviewOpen(isOpen) {
+    try {
+      window.localStorage.setItem(STORAGE_KEYS.previewOpen, String(isOpen));
+    } catch (error) {
+      // 保存できなくても表示はそのまま切り替わる
+    }
   }
 
   function loadCachedProfile() {
@@ -578,15 +598,27 @@ import {
     if (appState.ui.expandedExerciseId === null) {
       appState.ui.expandedExerciseId = getDefaultExpandedExerciseId(workout.exercises);
     }
+    // 並びは「最初にやること → 主な作業 → 確認だけのもの → 補助的な操作」
+    //   1. 見出し（履歴があれば「履歴から始める」）  2. 種目とセット
+    //   3. 日付・タイトル（自動で入っている）        4. サンプル・リセット
     const html = [
       '<div class="input-stack">',
-      '  <section class="panel-card input-card">',
-      '    <div class="panel-head">',
-      '      <div class="input-head-row">',
+      '  <div class="input-head-row input-page-head">',
       renderSettingsTrigger(),
-      '        <h2 class="panel-title">記録入力</h2>',
-      "      </div>",
-      "    </div>",
+      '    <h2 class="panel-title">記録入力</h2>',
+      appState.history.length
+        ? renderActionButton({
+          label: "履歴から始める",
+          variant: "pill-button start-from-history",
+          action: "open-history-input"
+        })
+        : "",
+      "  </div>",
+      renderSettingsModal(),
+      renderCurrentExerciseIndicator(workout.exercises),
+      renderExerciseStack(workout.exercises),
+      '  <section class="panel-card input-card">',
+      '    <h3 class="input-card-title">日付・タイトル</h3>',
       '    <div class="form-grid two-col">',
       fieldTemplate({
         label: "日付",
@@ -605,11 +637,8 @@ import {
           '" />'
       }),
       "    </div>",
-      renderInputUtilityActions(),
       "  </section>",
-      renderSettingsModal(),
-      renderCurrentExerciseIndicator(workout.exercises),
-      renderExerciseStack(workout.exercises),
+      renderInputUtilityActions(),
       "</div>"
     ].join("");
 
@@ -624,27 +653,31 @@ import {
     const flexMessage = buildWorkoutFlexMessage(appState.workout);
     const bubbles = flexMessage.contents.type === "carousel" ? flexMessage.contents.contents : [flexMessage.contents];
 
+    const isOpen = appState.ui.previewOpen;
     const html = [
       '<div class="preview-stack">',
-      '  <section class="panel-card preview-host-card">',
-      '    <div class="panel-head">',
-      "      <div>",
-      '        <h2 class="panel-title">送信内容</h2>',
-      "        <p>LINEで共有される内容です。</p>",
-      "      </div>",
+      // おくるカード(line-share)と同じ、LINE のトーク画面に近い枠
+      '  <section class="talk-preview' + (isOpen ? "" : " is-closed") + '" aria-label="送信プレビュー">',
+      '    <div class="talk-preview-head">',
+      '      <span class="talk-preview-label">送信プレビュー</span>',
+      '      <button class="talk-preview-toggle" data-action="toggle-preview" type="button" aria-expanded="' +
+      String(isOpen) +
+      '">' +
+      (isOpen ? "たたむ" : "ひらく") +
+      "</button>",
       "    </div>",
+      isOpen ? renderBubbleCarousel(shareableWorkout, bubbles) : "",
       validation.valid
-        ? '<p class="preview-note">入力内容がそのまま共有メッセージになります。</p>'
-        : '<p class="preview-note">共有前に入力タブで不足項目を埋めてください。' +
+        ? '<p class="talk-preview-note">' +
+        (bubbles.length > 1
+          ? "カード" + bubbles.length + "枚を横に並べて送ります。横にスクロールして確認できます。"
+          : "入力した内容が、そのままこのカードで送られます。") +
+        "</p>"
+        : '<p class="talk-preview-note is-warn">送る前に：' +
         escapeHtml(validation.errors.join(" ")) +
         "</p>",
-      bubbles
-        .map(function (bubble, index) {
-          return renderBubblePreview(shareableWorkout, bubble, index);
-        })
-        .join(""),
       "  </section>",
-      renderExerciseMetrics(calculatedWorkout),
+      isOpen ? renderExerciseMetrics(calculatedWorkout) : "",
       isDebugModeEnabled()
         ? '<section class="panel-card">' +
         '  <details class="json-accordion" ' +
@@ -793,6 +826,18 @@ import {
     switch (action) {
       case "close-status":
         clearStatus();
+        break;
+      case "step-set":
+        stepSetValue(button);
+        break;
+      case "toggle-metrics":
+        appState.ui.metricsOpen = !appState.ui.metricsOpen;
+        renderPreview();
+        break;
+      case "toggle-preview":
+        appState.ui.previewOpen = !appState.ui.previewOpen;
+        savePreviewOpen(appState.ui.previewOpen);
+        renderPreview();
         break;
       case "open-history-input":
         setActiveTab("history");
@@ -974,8 +1019,10 @@ import {
     renderStatus();
     renderTabButtonLabels();
 
+    // 送信プレビューは「入力」の一部として扱う
+    const navTab = appState.activeTab === "preview" ? "input" : appState.activeTab;
     elements.tabButtons.forEach(function (button) {
-      const isActive = button.getAttribute("data-tab") === appState.activeTab;
+      const isActive = button.getAttribute("data-tab") === navTab;
       button.classList.toggle("is-active", isActive);
     });
 
@@ -1193,8 +1240,8 @@ import {
     }
 
     const candidates = [
+      { tab: "input", element: elements.tabPreview },
       { tab: "input", element: elements.tabInput },
-      { tab: "preview", element: elements.tabPreview },
       { tab: "history", element: elements.tabHistory }
     ].filter(function (item) {
       return item.element && !item.element.hidden;
@@ -1275,9 +1322,11 @@ import {
 
   function renderExerciseCard(exercise, exerciseIndex) {
     const showExerciseFields = Boolean(exercise.catalogId || exercise.isCustom);
-    const exerciseTitle = exercise.isCustom
-      ? "種目名を入力"
-      : exercise.name || "種目を選択";
+    const exerciseTitle = exercise.name
+      ? exercise.name
+      : exercise.isCustom
+        ? "種目名を入力"
+        : "種目を選択";
     const isExpanded = !showExerciseFields || isExerciseExpanded(exercise.exerciseId);
     const summary = showExerciseFields ? renderExerciseSummary(exercise) : "";
     const canRemoveExercise = appState.workout.exercises.length > 1;
@@ -1310,7 +1359,7 @@ import {
         renderActionButton({
           label: "削除",
           icon: "🗑",
-          variant: "danger-button compact-action-button",
+          variant: "danger-button compact-action-button delete-pill",
           action: "remove-exercise",
           title: "種目削除",
           disabled: !canRemoveExercise,
@@ -1399,6 +1448,8 @@ import {
     ].join("");
   }
 
+  // 1セット分の行。スマホで押しやすいよう2段にし、kg・回数は −／＋ でも変えられる
+  //   上段: 何セット目・推定RM・削除  下段: kg と回数
   function renderSetRow(exerciseId, set, setIndex) {
     const hasValidSet = isValidSetInput(toNullableNumber(set.weight), toNullableNumber(set.reps));
     const exercise = appState.workout.exercises.find(function (item) {
@@ -1409,61 +1460,98 @@ import {
       Boolean(exercise && exercise.maxEstimated1rm) &&
       hasValidSet &&
       roundNumber(set.estimated1rm || 0, 1) === roundNumber(exercise.maxEstimated1rm || 0, 1);
+    const ids =
+      'data-exercise-id="' + escapeHtml(exerciseId) + '" data-set-id="' + escapeHtml(set.setId) + '"';
     return [
       '<div class="set-row">',
-      '  <div class="set-row-main">',
-      '    <div class="set-side">',
-      '      <span class="set-badge">Set ' +
-        (setIndex + 1) +
-        "</span>",
+      '  <div class="set-row-head">',
+      '    <span class="set-badge">' + (setIndex + 1) + "セット目</span>",
+      '    <div class="set-head-meta' +
+        (isMaxRmSet ? " is-max-rm" : "") +
+        '" data-set-meta="estimated1rm" ' +
+        ids +
+        '><small class="metric-label">推定RM</small><strong class="metric-value" data-set-summary="estimated1rm" ' +
+        ids +
+        ">" +
+        escapeHtml(hasValidSet ? formatMetric(set.estimated1rm || 0, "kg", 1) : "-") +
+        "</strong></div>",
       renderActionButton({
-        label: "−",
-        variant: "danger-button compact-action-button set-remove-button",
+        label: "削除",
+        variant: "danger-button compact-action-button set-remove-button delete-pill",
         action: "remove-set",
-        title: "セット削除",
+        title: "このセットを削除",
         disabled: !canRemoveSet,
         attrs: {
           "data-exercise-id": exerciseId,
           "data-set-id": set.setId
         }
       }),
-      "    </div>",
-      '    <label class="inline-field tile-field compact-tile-field">',
-      "      <span>kg</span>",
-      '      <input class="number-input" aria-label="kg" data-set-field="weight" data-exercise-id="' +
-      escapeHtml(exerciseId) +
-      '" data-set-id="' +
-      escapeHtml(set.setId) +
-      '" type="number" inputmode="decimal" step="0.5" min="0" placeholder="0" value="' +
-      escapeHtml(String(set.weight ?? "")) +
-      '" />',
-      "    </label>",
-      '    <label class="inline-field tile-field compact-tile-field">',
-      "      <span>reps</span>",
-      '      <input class="number-input" aria-label="reps" data-set-field="reps" data-exercise-id="' +
-      escapeHtml(exerciseId) +
-      '" data-set-id="' +
-      escapeHtml(set.setId) +
-      '" type="number" inputmode="numeric" step="1" min="0" placeholder="0" value="' +
-      escapeHtml(String(set.reps ?? "")) +
-      '" />',
-      "    </label>",
-      '    <div class="set-head-meta' +
-        (isMaxRmSet ? " is-max-rm" : "") +
-        '" data-set-meta="estimated1rm" data-exercise-id="' +
-        escapeHtml(exerciseId) +
-        '" data-set-id="' +
-        escapeHtml(set.setId) +
-        '"><small class="metric-label">RM</small><strong class="metric-value" data-set-summary="estimated1rm" data-exercise-id="' +
-        escapeHtml(exerciseId) +
-        '" data-set-id="' +
-        escapeHtml(set.setId) +
-        '">' +
-        escapeHtml(hasValidSet ? formatMetric(set.estimated1rm || 0, "kg", 1) : "-") +
-        "</strong></div>",
+      "  </div>",
+      '  <div class="set-row-inputs">',
+      renderSetStepper({ field: "weight", unit: "kg", step: 2.5, inputmode: "decimal", inputStep: "0.5", value: set.weight, ids: ids }),
+      renderSetStepper({ field: "reps", unit: "回", step: 1, inputmode: "numeric", inputStep: "1", value: set.reps, ids: ids }),
       "  </div>",
       "</div>"
     ].join("");
+  }
+
+  // 数値入力の左右に −／＋。押すと入力欄の値を変えて input イベントを出すので、手入力と同じ処理で反映される
+  function renderSetStepper(options) {
+    const label = options.unit === "kg" ? "重さ" : "回数";
+    return [
+      '<div class="set-stepper">',
+      '  <button class="stepper-button" data-action="step-set" data-set-field="' +
+        options.field +
+        '" data-step="' +
+        -options.step +
+        '" type="button" aria-label="' +
+        label +
+        "を" +
+        options.step +
+        '減らす">−</button>',
+      '  <label class="stepper-field">',
+      '    <input class="number-input stepper-input" aria-label="' +
+        label +
+        "（" +
+        options.unit +
+        '）" data-set-field="' +
+        options.field +
+        '" ' +
+        options.ids +
+        ' type="number" inputmode="' +
+        options.inputmode +
+        '" step="' +
+        options.inputStep +
+        '" min="0" placeholder="0" value="' +
+        escapeHtml(String(options.value ?? "")) +
+        '" />',
+      '    <span class="stepper-unit">' + options.unit + "</span>",
+      "  </label>",
+      '  <button class="stepper-button" data-action="step-set" data-set-field="' +
+        options.field +
+        '" data-step="' +
+        options.step +
+        '" type="button" aria-label="' +
+        label +
+        "を" +
+        options.step +
+        '増やす">＋</button>',
+      "</div>"
+    ].join("");
+  }
+
+  function stepSetValue(button) {
+    const row = button.closest(".set-row");
+    const field = button.getAttribute("data-set-field");
+    const input = row && row.querySelector('input[data-set-field="' + field + '"]');
+    if (!input) {
+      return;
+    }
+    const step = Number(button.getAttribute("data-step")) || 0;
+    const next = Math.max(0, (Number(input.value) || 0) + step);
+    // 重さは 0.5kg 刻み、回数は整数にそろえる
+    input.value = String(field === "reps" ? Math.round(next) : Math.round(next * 2) / 2);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
   function syncRenderedSetSummary(exerciseId) {
@@ -1512,44 +1600,42 @@ import {
       return "";
     }
 
+    // 入力欄までの距離が伸びないよう、集計はボタンで開く（ふだんは閉じておく）
+    const isOpen = appState.ui.metricsOpen;
     return [
-      '<section class="panel-card">',
-      '  <div class="panel-head stats-head">',
-      '    <h2 class="panel-title">STATS</h2>',
+      '<section class="panel-card metrics-card">',
+      '  <button class="metrics-toggle" data-action="toggle-metrics" type="button" aria-expanded="' + String(isOpen) + '">',
+      '    <span class="metrics-toggle-title">📊 この記録の集計</span>',
       '    <span class="badge">' + escapeHtml(String(previewExercises.length)) + "種目</span>",
-      "  </div>",
-      '  <div class="stats-list">',
-      previewExercises
-        .map(function (exercise) {
-          return renderExerciseStatCard(exercise);
-        })
-        .join(""),
-      "  </div>",
+      '    <span class="metrics-toggle-arrow" aria-hidden="true">' + (isOpen ? "▲" : "▼") + "</span>",
+      "  </button>",
+      isOpen
+        ? '  <div class="stats-list">' +
+        previewExercises
+          .map(function (exercise) {
+            return renderExerciseStatCard(exercise);
+          })
+          .join("") +
+        "  </div>"
+        : "",
       "</section>"
     ].join("");
   }
 
   function renderInputUtilityActions() {
     return [
-      '<div class="input-utility-card">',
-      '  <div class="input-utility-title">入力操作</div>',
-      '  <div class="button-row utility-button-row">',
+      // 補助的な操作は一番下に小さく（「履歴から始める」は見出しの横へ移した）
+      '<div class="input-utility-row">',
       renderActionButton({
-        label: "サンプル",
-        variant: "outline-button utility-button",
+        label: "サンプルを入れる",
+        variant: "text-link-button",
         action: "sample-workout"
       }),
       renderActionButton({
-        label: "履歴から",
-        variant: "pill-button utility-button",
-        action: "open-history-input"
-      }),
-      renderActionButton({
-        label: "初期化",
-        variant: "danger-button utility-button",
+        label: "入力をリセット",
+        variant: "text-link-button is-danger",
         action: "reset-workout"
       }),
-      "  </div>",
       "</div>"
     ].join("");
   }
@@ -1717,6 +1803,25 @@ import {
   function toggleHistoryCard(workoutId) {
     appState.ui.openHistoryIds[workoutId] = !appState.ui.openHistoryIds[workoutId];
     renderHistory();
+  }
+
+  // 種目が多いと LINE ではカードが横に並ぶ（カルーセル）。プレビューも同じく横スクロールで見せる
+  function renderBubbleCarousel(workout, bubbles) {
+    const items = bubbles.map(function (bubble, index) {
+      return renderBubblePreview(workout, bubble, index);
+    });
+    if (items.length <= 1) {
+      return items.join("");
+    }
+    return [
+      '<div class="talk-carousel" tabindex="0" aria-label="カード ' + items.length + '枚（横にスクロール）">',
+      items
+        .map(function (item) {
+          return '<div class="talk-carousel-item">' + item + "</div>";
+        })
+        .join(""),
+      "</div>"
+    ].join("");
   }
 
   function renderBubblePreview(workout, bubble, index) {

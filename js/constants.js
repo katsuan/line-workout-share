@@ -14,7 +14,8 @@ export const FEATURE_FLAGS = Object.assign(
 export const STORAGE_KEYS = {
   history: "liff-workout-history",
   theme: "liff-workout-theme",
-  profile: "liff-workout-profile"
+  profile: "liff-workout-profile",
+  previewOpen: "liff-workout-preview-open"
 };
 
 export const MAX_HISTORY_ITEMS = 10;

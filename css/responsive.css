@@ -191,4 +191,32 @@
   .exercise-actions {
     gap: 6px;
   }
+
+  /* 削除はアイコンでなく「削除」の文字の小さなピルで出す（アイコンの無いセット削除が空の四角に見えないように） */
+  .delete-pill .action-label {
+    display: inline;
+  }
+
+  .delete-pill .action-icon {
+    display: none;
+  }
+
+  .compact-action-button.delete-pill {
+    min-width: 0;
+    min-height: 30px;
+    padding: 0 12px;
+  }
+
+  /* 種目追加は親指で押しやすい横幅いっぱいのボタンに */
+  .tail-add-action {
+    margin: 2px 0 8px;
+  }
+
+  .tail-add-action .between-exercise-button {
+    width: 100%;
+    min-height: 48px;
+    border-style: dashed;
+    font-size: 0.95rem;
+    font-weight: 800;
+  }
 }

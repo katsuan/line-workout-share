@@ -652,3 +652,208 @@ button:disabled {
   background: transparent;
   color: var(--primary-dark);
 }
+
+/* ---- セットの行（スマホ向けの2段レイアウト） ---- */
+.set-row-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.set-row-head .set-badge {
+  width: auto;
+  min-height: 28px;
+  padding: 4px 10px;
+  font-size: 0.82rem;
+}
+
+.set-row-head .set-head-meta {
+  flex: 1;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+}
+
+.set-row-head .set-head-meta .metric-label {
+  position: static;
+  padding: 0;
+  background: transparent;
+  color: var(--muted);
+}
+
+.set-row-head .set-head-meta .metric-value {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.set-row-head .set-head-meta.is-max-rm .metric-value {
+  color: var(--primary-dark);
+}
+
+.set-row-head .set-head-meta.is-max-rm .metric-value::after {
+  content: " MAX";
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+/* 削除は主張しすぎない小さなピル（セット・種目とも） */
+.delete-pill,
+.set-row-head .set-remove-button {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 0;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(214, 69, 69, 0.35);
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  color: #c24141;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.delete-pill .action-label {
+  font-size: inherit;
+}
+
+.delete-pill:disabled {
+  opacity: 0.35;
+}
+
+.set-row-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.set-stepper {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 36px;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--primary-outline);
+  border-radius: 14px;
+  background: #fff;
+}
+
+/* −／＋ は控えめに：背景なし・薄い色の細い記号。押せる範囲(高さ52px)は保つ */
+.stepper-button {
+  min-height: 52px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 400;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.stepper-button:active {
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+}
+
+.stepper-field {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 0 2px;
+}
+
+.stepper-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  /* iOS で入力時に拡大されないよう 16px 以上 */
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-align: right;
+  -moz-appearance: textfield;
+}
+
+.stepper-input::-webkit-outer-spin-button,
+.stepper-input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.stepper-input:focus {
+  outline: none;
+}
+
+.set-stepper:focus-within {
+  border-color: var(--primary-dark);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+}
+
+.stepper-unit {
+  flex: 0 0 auto;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+/* ---- 入力画面の並び（見出し → 種目 → 日付・タイトル → 補助操作） ---- */
+.input-page-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 4px 0;
+}
+
+.input-page-head .panel-title {
+  flex: 1;
+  margin: 0;
+}
+
+.start-from-history {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.input-card-title {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.input-utility-row {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  padding: 4px 0 12px;
+}
+
+.text-link-button {
+  min-height: 40px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.text-link-button.is-danger {
+  color: #c24141;
+}
