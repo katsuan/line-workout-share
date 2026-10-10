@@ -605,9 +605,9 @@ import {
     if (appState.ui.expandedExerciseId === null) {
       appState.ui.expandedExerciseId = getDefaultExpandedExerciseId(workout.exercises);
     }
-    // 並びは「最初にやること → 主な作業 → 確認だけのもの → 補助的な操作」
-    //   1. 見出し（履歴があれば「履歴から始める」）  2. 種目とセット
-    //   3. 日付・タイトル（自動で入っている）        4. サンプル・リセット
+    // 並びは「記録の前提 → 主な作業 → 補助的な操作」
+    //   1. 見出し（履歴があれば「履歴から始める」）  2. 日付・タイトル（自動で入っている）
+    //   3. 種目とセット                              4. サンプル・リセット
     const html = [
       '<div class="input-stack">',
       '  <div class="input-head-row input-page-head">',
@@ -622,11 +622,8 @@ import {
         : "",
       "  </div>",
       renderSettingsModal(),
-      renderCurrentExerciseIndicator(workout.exercises),
-      renderExerciseStack(workout.exercises),
-      '  <section class="panel-card input-card">',
-      '    <h3 class="input-card-title">日付・タイトル</h3>',
-      '    <div class="form-grid two-col">',
+      '  <section class="panel-card input-card workout-meta-card" aria-label="日付・タイトル">',
+      '    <div class="workout-meta-grid">',
       fieldTemplate({
         label: "日付",
         className: "tile-field",
@@ -645,6 +642,8 @@ import {
       }),
       "    </div>",
       "  </section>",
+      renderCurrentExerciseIndicator(workout.exercises),
+      renderExerciseStack(workout.exercises),
       renderInputUtilityActions(),
       "</div>"
     ].join("");
@@ -667,11 +666,7 @@ import {
       '  <section class="talk-preview' + (isOpen ? "" : " is-closed") + '" aria-label="送信プレビュー">',
       '    <div class="talk-preview-head">',
       '      <span class="talk-preview-label">送信プレビュー</span>',
-      '      <button class="talk-preview-toggle" data-action="toggle-preview" type="button" aria-expanded="' +
-      String(isOpen) +
-      '">' +
-      (isOpen ? "たたむ" : "ひらく") +
-      "</button>",
+      renderDisclosureToggle({ isOpen: isOpen, action: "toggle-preview", title: "送信プレビュー" }),
       "    </div>",
       isOpen ? renderBubbleCarousel(shareableWorkout, bubbles) : "",
       validation.valid
@@ -1352,12 +1347,10 @@ import {
       "    </div>",
       '    <div class="exercise-actions">' +
         (showExerciseFields
-          ? renderActionButton({
-              label: isExpanded ? "閉じる" : "開く",
-              icon: isExpanded ? "▴" : "▾",
-              variant: "outline-button compact-action-button exercise-toggle-button",
+          ? renderDisclosureToggle({
+              isOpen: isExpanded,
               action: "toggle-exercise-panel",
-              title: isExpanded ? "種目をたたむ" : "種目を開く",
+              title: "種目",
               attrs: {
                 "data-exercise-id": exercise.exerciseId
               }
@@ -1611,11 +1604,11 @@ import {
     const isOpen = appState.ui.metricsOpen;
     return [
       '<section class="panel-card metrics-card">',
-      '  <button class="metrics-toggle" data-action="toggle-metrics" type="button" aria-expanded="' + String(isOpen) + '">',
-      '    <span class="metrics-toggle-title">📊 この記録の集計</span>',
+      '  <div class="metrics-head">',
+      '    <span class="metrics-title">📊 この記録の集計</span>',
       '    <span class="badge">' + escapeHtml(String(previewExercises.length)) + "種目</span>",
-      '    <span class="metrics-toggle-arrow" aria-hidden="true">' + (isOpen ? "▲" : "▼") + "</span>",
-      "  </button>",
+      renderDisclosureToggle({ isOpen: isOpen, action: "toggle-metrics", title: "この記録の集計" }),
+      "  </div>",
       isOpen
         ? '  <div class="stats-list">' +
         previewExercises
@@ -1758,10 +1751,10 @@ import {
           "data-workout-id": workout.workoutId
         }
       }),
-      renderActionButton({
-        label: isOpen ? "閉じる" : "開く",
-        variant: "outline-button history-action-button",
+      renderDisclosureToggle({
+        isOpen: isOpen,
         action: "toggle-history-card",
+        title: "履歴",
         attrs: {
           "data-workout-id": workout.workoutId
         }
@@ -1949,6 +1942,33 @@ import {
     ].join("");
   }
 
+  // 開閉できるところ（送信プレビュー・集計・種目・履歴）は、すべてこの ▾ ボタンでそろえる（文字は読み上げ用）
+  function renderDisclosureToggle(options) {
+    const isOpen = Boolean(options.isOpen);
+    const attrs = Object.assign({}, options.attrs || {});
+    const attributeText = Object.keys(attrs)
+      .map(function (key) {
+        return " " + key + '="' + escapeHtml(String(attrs[key])) + '"';
+      })
+      .join("");
+    return (
+      '<button class="disclosure-toggle' +
+      (isOpen ? " is-open" : "") +
+      '" data-action="' +
+      escapeHtml(options.action) +
+      '"' +
+      attributeText +
+      ' aria-expanded="' +
+      String(isOpen) +
+      '"' +
+      ' aria-label="' +
+      escapeHtml((options.title ? options.title + "を" : "") + (isOpen ? "たたむ" : "ひらく")) +
+      '" type="button">' +
+      '<span class="disclosure-chevron" aria-hidden="true">▾</span>' +
+      "</button>"
+    );
+  }
+
   function renderActionButton(options) {
     const attrs = Object.assign({}, options.attrs || {});
     const attributeText = Object.keys(attrs)
@@ -2098,7 +2118,7 @@ import {
     const hasMemo = Boolean(String(exercise.memo || "").trim());
 
     if (isOpen) {
-      return "メモを閉じる";
+      return "メモをたたむ";
     }
 
     return hasMemo ? "メモ編集" : "＋メモ追加";

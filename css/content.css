@@ -320,26 +320,18 @@ details.json-accordion summary::-webkit-details-marker {
 
 .talk-preview-label {
   grid-column: 2;
-  padding: 3px 12px;
-  border-radius: 999px;
+  padding: 3px 10px;
+  border-radius: 6px;
   background: rgba(0, 0, 0, 0.18);
   color: #fff;
   font-size: 12px;
   font-weight: 700;
 }
 
-.talk-preview-toggle {
+.talk-preview-head .disclosure-toggle {
   grid-column: 3;
   justify-self: end;
-  min-height: 36px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.85);
-  color: #33415c;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
+  border-color: transparent;
 }
 
 .talk-preview-note {
@@ -368,30 +360,17 @@ details.json-accordion summary::-webkit-details-marker {
   padding-bottom: 6px;
 }
 
-.metrics-toggle {
+.metrics-head {
   display: flex;
   align-items: center;
   gap: 10px;
-  width: 100%;
   min-height: 48px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
+}
+
+.metrics-title {
+  flex: 1;
   font-size: 16px;
   font-weight: 800;
-  text-align: left;
-  cursor: pointer;
-}
-
-.metrics-toggle-title {
-  flex: 1;
-}
-
-.metrics-toggle-arrow {
-  color: var(--text-muted, #8a7a6a);
-  font-size: 12px;
 }
 
 .metrics-card .stats-list {
