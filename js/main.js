@@ -324,7 +324,14 @@ import {
     if (!exercise) {
       return;
     }
-    exercise.sets.push(createEmptySet());
+    // 直前のセットの重さ・回数を引き継ぎ、−／＋で微調整するだけで入力できるようにする
+    const lastSet = exercise.sets[exercise.sets.length - 1];
+    const newSet = createEmptySet();
+    if (lastSet) {
+      newSet.weight = lastSet.weight;
+      newSet.reps = lastSet.reps;
+    }
+    exercise.sets.push(newSet);
     appState.ui.expandedExerciseId = exerciseId;
     touchWorkout();
     renderInput();
@@ -1857,15 +1864,18 @@ import {
             bodyLines
               .map(function (line) {
                 if (line.type === "box") {
-                  const left = line.contents[0] ? line.contents[0].text : "";
+                  const numberBox = line.contents[0] || {};
+                  const left = numberBox.contents && numberBox.contents[0] ? numberBox.contents[0].text : numberBox.text || "";
                   const main = line.contents[1] ? line.contents[1].text : "";
                   const badge =
                     line.contents[2] && line.contents[2].contents && line.contents[2].contents[0]
                       ? line.contents[2].contents[0].text
                       : "";
                   return (
-                    '<div class="preview-set-line"><span>' +
-                    escapeHtml(left + " " + main) +
+                    '<div class="preview-set-line"><span class="preview-set-number">' +
+                    escapeHtml(left) +
+                    '</span><span class="preview-set-main">' +
+                    escapeHtml(main) +
                     "</span>" +
                     (badge ? '<strong class="preview-rm-badge">' + escapeHtml(badge) + "</strong>" : "") +
                     "</div>"

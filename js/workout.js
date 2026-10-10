@@ -369,10 +369,19 @@ function buildSetLinesForFlex(exercise, theme) {
       alignItems: "center",
       contents: [
         {
-          type: "text",
-          text: String(index + 1),
-          size: "xs",
-          flex: 0
+          type: "box",
+          layout: "vertical",
+          width: "18px",
+          flex: 0,
+          contents: [
+            {
+              type: "text",
+              text: String(index + 1),
+              size: "xxs",
+              color: theme.textMuted,
+              align: "end"
+            }
+          ]
         },
         {
           type: "text",
@@ -388,7 +397,8 @@ function buildSetLinesForFlex(exercise, theme) {
                 type: "box",
                 layout: "vertical",
                 flex: 0,
-                paddingAll: "2px",
+                paddingTop: "0px",
+                paddingBottom: "0px",
                 paddingStart: "5px",
                 paddingEnd: "5px",
                 backgroundColor: theme.accent,

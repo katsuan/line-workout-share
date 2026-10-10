@@ -611,7 +611,8 @@
 .link-button {
   min-height: 40px;
   padding: 8px 13px;
-  border-radius: 14px;
+  /* 補助的なボタンはピル形にして、角丸の主要ボタンと区別する */
+  border-radius: 999px;
   border: 1px solid transparent;
   background: var(--surface);
   color: var(--text);
