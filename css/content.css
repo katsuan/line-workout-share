@@ -331,7 +331,8 @@ details.json-accordion summary::-webkit-details-marker {
 .talk-preview-head .disclosure-toggle {
   grid-column: 3;
   justify-self: end;
-  border-color: transparent;
+  background: rgba(255, 255, 255, 0.85);
+  color: #33415c;
 }
 
 .talk-preview-note {

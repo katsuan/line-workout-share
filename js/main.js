@@ -515,6 +515,7 @@ import {
     }
 
     appState.workout = hydrateWorkout(restored);
+    appState.workout.date = getTodayLocalDate();
     syncWorkoutUser();
     appState.ui.expandedExerciseId = appState.workout.exercises[0]
       ? appState.workout.exercises[0].exerciseId
@@ -606,7 +607,7 @@ import {
       appState.ui.expandedExerciseId = getDefaultExpandedExerciseId(workout.exercises);
     }
     // 並びは「記録の前提 → 主な作業 → 補助的な操作」
-    //   1. 見出し（履歴があれば「履歴から始める」）  2. 日付・タイトル（自動で入っている）
+    //   1. 見出し（履歴があれば「履歴から始める」）  2. ワークアウトタイトル（日付は入力した日を自動で使う）
     //   3. 種目とセット                              4. サンプル・リセット
     const html = [
       '<div class="input-stack">',
@@ -622,16 +623,7 @@ import {
         : "",
       "  </div>",
       renderSettingsModal(),
-      '  <section class="panel-card input-card workout-meta-card" aria-label="日付・タイトル">',
-      '    <div class="workout-meta-grid">',
-      fieldTemplate({
-        label: "日付",
-        className: "tile-field",
-        input:
-          '<input class="text-input date-input" aria-label="日付" data-field="date" type="date" value="' +
-          escapeHtml(workout.date || "") +
-          '" />'
-      }),
+      '  <section class="panel-card input-card workout-meta-card" aria-label="ワークアウトタイトル">',
       fieldTemplate({
         label: "ワークアウトタイトル",
         className: "tile-field",
@@ -640,7 +632,6 @@ import {
           escapeHtml(workout.title || "") +
           '" />'
       }),
-      "    </div>",
       "  </section>",
       renderCurrentExerciseIndicator(workout.exercises),
       renderExerciseStack(workout.exercises),
@@ -664,7 +655,7 @@ import {
       '<div class="preview-stack">',
       // おくるカード(line-share)と同じ、LINE のトーク画面に近い枠
       '  <section class="talk-preview' + (isOpen ? "" : " is-closed") + '" aria-label="送信プレビュー">',
-      '    <div class="talk-preview-head">',
+      '    <div class="talk-preview-head" data-disclosure-host>',
       '      <span class="talk-preview-label">送信プレビュー</span>',
       renderDisclosureToggle({ isOpen: isOpen, action: "toggle-preview", title: "送信プレビュー" }),
       "    </div>",
@@ -802,6 +793,14 @@ import {
   function handleClick(event) {
     const button = event.target.closest("button");
     if (!button) {
+      // 開閉できる見出しは、▾ だけでなく行のどこを押しても開閉する
+      const host = event.target.closest("[data-disclosure-host]");
+      const toggle = host && !event.target.closest("input, textarea, select, label, a")
+        ? host.querySelector(".disclosure-toggle")
+        : null;
+      if (toggle) {
+        toggle.click();
+      }
       return;
     }
 
@@ -841,6 +840,9 @@ import {
         savePreviewOpen(appState.ui.previewOpen);
         renderPreview();
         break;
+      case "jump-to-current-exercise":
+        scrollToExerciseCard(button.getAttribute("data-exercise-id"));
+        break;
       case "open-history-input":
         setActiveTab("history");
         break;
@@ -860,6 +862,12 @@ import {
         removeSet(button.getAttribute("data-exercise-id"), button.getAttribute("data-set-id"));
         break;
       case "restore-history":
+        if (
+          countNamedExercises(appState.workout) > 0 &&
+          !window.confirm("今の入力内容を、この履歴で置き換えますか？")
+        ) {
+          break;
+        }
         restoreWorkout(button.getAttribute("data-workout-id"));
         break;
       case "delete-history":
@@ -1298,6 +1306,8 @@ import {
   }
 
   function touchWorkout(renewWorkoutId) {
+    // 日付は手入力させず、記録を入力した日をそのまま使う
+    appState.workout.date = getTodayLocalDate();
     appState.workout = calculateWorkout(appState.workout);
     if (renewWorkoutId !== false) {
       appState.workout.workoutId = appState.workout.workoutId || generateId("workout");
@@ -1337,7 +1347,7 @@ import {
       '<section class="exercise-card" data-exercise-card-id="' +
         escapeHtml(exercise.exerciseId) +
         '">',
-      '  <div class="exercise-header">',
+      '  <div class="exercise-header" data-disclosure-host>',
       "    <div>",
       '      <p class="section-label">エクササイズ ' + (exerciseIndex + 1) + "</p>",
       '      <h3 class="exercise-title">' +
@@ -1604,7 +1614,7 @@ import {
     const isOpen = appState.ui.metricsOpen;
     return [
       '<section class="panel-card metrics-card">',
-      '  <div class="metrics-head">',
+      '  <div class="metrics-head" data-disclosure-host>',
       '    <span class="metrics-title">📊 この記録の集計</span>',
       '    <span class="badge">' + escapeHtml(String(previewExercises.length)) + "種目</span>",
       renderDisclosureToggle({ isOpen: isOpen, action: "toggle-metrics", title: "この記録の集計" }),
@@ -1705,15 +1715,21 @@ import {
       return exercise.exerciseId === currentExercise.exerciseId;
     });
 
+    // タップでその種目のカードへ移動する
     return [
-      '<div class="current-exercise-indicator">',
-      '  <span class="current-exercise-label">入力中</span>',
-      '  <strong class="current-exercise-name">エクササイズ ' +
+      '<button class="current-exercise-indicator" data-action="jump-to-current-exercise" data-exercise-id="' +
+        escapeHtml(currentExercise.exerciseId) +
+        '" type="button" aria-label="入力中の種目へ移動">',
+      '  <span class="current-exercise-copy">',
+      '    <span class="current-exercise-label">入力中</span>',
+      '    <strong class="current-exercise-name">エクササイズ ' +
         escapeHtml(String(currentIndex + 1)) +
         " ・ " +
         escapeHtml(currentExercise.name || "種目を選択") +
         "</strong>",
-      "</div>"
+      "  </span>",
+      '  <span class="current-exercise-jump" aria-hidden="true">›</span>',
+      "</button>"
     ].join("");
   }
 
@@ -1733,7 +1749,7 @@ import {
       '<article class="history-card history-card-accordion' +
         (isOpen ? " is-open" : "") +
         '">',
-      '  <div class="history-card-head history-card-summary">',
+      '  <div class="history-card-head history-card-summary" data-disclosure-host>',
       '    <div class="history-card-copy">',
       '      <p class="history-meta history-meta-inline">' +
         escapeHtml(workout.date || "-") +
@@ -1744,7 +1760,7 @@ import {
       "    </div>",
       '    <div class="history-actions history-actions-inline">',
       renderActionButton({
-        label: "適用",
+        label: "この内容で入力",
         variant: "pill-button history-action-button",
         action: "restore-history",
         attrs: {

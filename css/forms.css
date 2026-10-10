@@ -70,22 +70,6 @@
   font-weight: 500;
 }
 
-.date-input {
-  min-width: 0;
-  padding-right: 36px;
-  appearance: none;
-  -webkit-appearance: none;
-}
-
-.date-input::-webkit-date-and-time-value {
-  min-height: 1.4em;
-  text-align: left;
-}
-
-.date-input::-webkit-calendar-picker-indicator {
-  opacity: 0.88;
-}
-
 .number-input {
   font-size: 1.12rem;
   font-weight: 650;
@@ -143,8 +127,14 @@
 }
 
 .current-exercise-indicator {
-  display: grid;
-  gap: 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
   padding: 8px 10px;
   border-radius: 14px;
   background: var(--primary-surface);
@@ -153,6 +143,23 @@
   top: 8px;
   z-index: 8;
   box-shadow: 0 8px 18px rgba(31, 42, 31, 0.06);
+}
+
+.current-exercise-copy {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.current-exercise-jump {
+  color: var(--muted);
+  font-size: 1.2rem;
+}
+
+/* 「入力中」から移動したとき、カードの頭が「入力中」の帯に隠れないように */
+.exercise-card {
+  scroll-margin-top: 76px;
 }
 
 .current-exercise-label {
@@ -827,10 +834,8 @@ button:disabled {
   padding: 12px;
 }
 
-.workout-meta-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 9.5rem) minmax(0, 1fr);
-  gap: 8px;
+[data-disclosure-host] {
+  cursor: pointer;
 }
 
 .input-utility-row {
@@ -858,19 +863,19 @@ button:disabled {
   color: #c24141;
 }
 
-/* 開閉ボタン：送信プレビュー・集計・種目・履歴で同じ丸い ▾ */
+/* 開閉の目印：見出しの行全体で開閉できるので、▾ は枠のない控えめな印にする */
 .disclosure-toggle {
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   padding: 0;
-  border: 1px solid var(--line);
+  border: 0;
   border-radius: 999px;
-  background: #ffffff;
-  color: var(--text);
+  background: var(--primary-soft);
+  color: var(--primary-dark);
   font-size: 0.82rem;
   font-weight: 700;
   line-height: 1;
@@ -878,7 +883,7 @@ button:disabled {
 }
 
 .disclosure-chevron {
-  color: var(--text);
+  color: inherit;
   font-size: 1rem;
   transition: transform 0.15s ease;
 }
