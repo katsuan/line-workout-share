@@ -1,6 +1,6 @@
 window.APP_CONFIG = {
   LIFF_ID: "2009927582-2isjfmkk",
-  APP_NAME: "きろく",
+  APP_NAME: "kiloQ",
   DEFAULT_GROUP_KEY: "default-group",
   FEATURE_FLAGS: {
     enableDebugMode: false,

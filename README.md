@@ -1,8 +1,8 @@
-# 🏋️ きろく（KILOQ）
+# 🏋️ きろく（kiloQ）
 
-筋トレの記録ツール。名前は「きろく」（英字は KILOQ。おくるん＝OQRN・さくせん盤＝SAQSEN と同じ作り方で、「く」を Q にする。「きろ」は重さの kg のキロに掛けて KILO と書く）。ふだん見せるのはひらがなの「きろく」、英字は見出しの右のロゴに使う。送るカードの末尾は「Created by きろく ›」（おくるんの「Created by おくるん ›」にそろえる。タップでこのツールが開く）。
+筋トレの記録ツール。名前は「きろく」（英字は kiloQ。おくるん＝OQRN・さくせん盤＝SAQSEN と同じ作り方で、「く」を Q にする。「きろ」は重さの kg のキロに掛けて kilo と書く。kilo は小文字、Q だけ大文字）。ふだん見せるのはひらがなの「きろく」、英字は見出しの右のロゴに使う。送るカードの末尾は「Created by kiloQ ›」（おくるんの「Created by おくるん ›」と同じ形。タップでこのツールが開く）。
 
-アイコン（`icon.svg`・`apple-touch-icon.png`・`icon-512.png`・`icon-maskable-512.png`・`icon-32.png`）と横長のロゴ（`logo.svg`）は `python3 tools/icon.py` で作る：おくるんと同じ角の丸い四角に、きろくのオレンジ（`DEFAULT_THEME.baseColor` の #C96A2D）。白いウエイトのプレート（太い輪＋面の溝＋まん中の穴）の右下のふちに、小さなダンベルを斜めに重ね、プレート（輪）＋ダンベル（しっぽ）で Q に見せる（KILOQ の Q）。後ろにうっすらノートの罫線（記録）。ロゴは K・I・L・O をフォント（Jua）で並べ、Q だけアイコンと同じプレート＋ダンベル。共有したときの画像（`ogp.png`、1200×630）は `python3 tools/ogp.py` で作る。ホーム画面に追加したとき用に `manifest.webmanifest`。
+アイコン（`icon.svg`・`apple-touch-icon.png`・`icon-512.png`・`icon-maskable-512.png`・`icon-32.png`）と横長のロゴ（`logo.svg`）は `python3 tools/icon.py` で作る：おくるんと同じ角の丸い四角に、きろくのオレンジ（`DEFAULT_THEME.baseColor` の #C96A2D）。白いウエイトのプレート（太い輪＋面の溝＋まん中の穴）の右下のふちに、小さなダンベルを斜めに重ね、プレート（輪）＋ダンベル（しっぽ）で Q に見せる（kiloQ の Q）。後ろにうっすらノートの罫線（記録）。ロゴは k・i・l・o をフォント（Jua）で並べ、Q だけアイコンと同じプレート＋ダンベル。共有したときの画像（`ogp.png`、1200×630）は `python3 tools/ogp.py` で作る。ホーム画面に追加したとき用に `manifest.webmanifest`。
 
 おくるんのトップの「ほかのツール」（line-share の `data/hub-links.json`）には、このアイコン（`appIcon`）付きで「きろく」として載せている。
 
@@ -73,6 +73,11 @@ GitHub Pages で配信する、静的なワークアウト共有アプリです�
   - 種目ごとの推定 1RM（O'Conner 式：重さ ＋ 重さ × 回数 ÷ 40）
   - セット内容確認
   - ボリュームは送信表示に含めない
+- トレーニングメニュー（テンプレート）
+  - 記録入力の見出しの「📋 メニュー」からシートを開く
+  - 今の入力（種目・セットの重さと回数・メモ）に名前を付けて保存（名前の初期値はワークアウトタイトル。同じ名前は上書きを確認。20件まで。localStorage の `liff-workout-menus`）
+  - 「入れる」で、タイトルをメニュー名にした新しい入力にする（入力中の内容があるときは置き換えを確認）。マイメニューは削除もできる
+  - おすすめ（胸の日・背中の日・脚の日・肩・腕の日・全身）は `js/constants.js` の `MENU_PRESETS`。回数とセット数だけ入り、重さは空
 - 履歴タブ
   - `localStorage` に保存した履歴の表示
   - 初期状態はアコーディオンを閉じて表示（見出しの行をタップで開閉）
@@ -109,7 +114,7 @@ GitHub Pages で配信する、静的なワークアウト共有アプリです�
 - `LIFF_ID`
   - LIFF アプリ ID
 - `APP_NAME`
-  - アプリ名（「きろく」。送るカード末尾の「Created by きろく ›」に使う）
+  - 英字の名前（「kiloQ」。送るカード末尾の「Created by kiloQ ›」に使う）
 - `DEFAULT_GROUP_KEY`
   - LIFF コンテキストが取れない場合のフォールバック
 - `FEATURE_FLAGS.enableDebugMode`

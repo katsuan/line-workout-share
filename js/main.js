@@ -4,6 +4,8 @@ import {
   DEFAULT_USER,
   EXERCISE_CATALOG,
   FEATURE_FLAGS,
+  MAX_MENUS,
+  MENU_PRESETS,
   MUSCLE_FILTERS,
   STORAGE_KEYS
 } from "./constants.js";
@@ -16,6 +18,7 @@ import {
 } from "./theme.js";
 import { initLiff as initializeLiffState, loadCachedProfile, safelyGetLiffContext } from "./liff.js";
 import {
+  buildMenuFromWorkout,
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
   calculateWorkout,
   countNamedExercises,
@@ -23,14 +26,18 @@ import {
   createEmptyExercise,
   createEmptySet,
   createEmptyWorkout,
+  createWorkoutFromMenu,
+  expandMenuPreset,
   getDefaultWorkoutTitle,
   hydrateWorkout,
   isFilledSet,
   resolveWorkoutTitle,
-  sanitizeWorkout as sanitizeWorkoutModel
+  sanitizeWorkout as sanitizeWorkoutModel,
+  summarizeMenu
 } from "./workout.js";
 import {
   createApiWorkoutRepository,
+  createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
 } from "./repositories.js";
 import {
@@ -50,6 +57,7 @@ import {
     rankingPeriod: "week",
     rankingData: null,
     history: [],
+    menus: [],
     status: {
       message: "",
       type: "info"
@@ -62,6 +70,9 @@ import {
       expandedExerciseId: null,
       memoOpenExerciseIds: {},
       settingsModalOpen: false,
+      // トレーニングメニュー（テンプレート）のシート。menuName は「保存する名前」の入力中の値
+      menuModalOpen: false,
+      menuName: "",
       openHistoryIds: {}
     },
     theme: Object.assign({}, DEFAULT_THEME),
@@ -99,13 +110,14 @@ import {
   async function initApp() {
     cacheElements();
     bindEvents();
-    document.title = document.title || APP_CONFIG.APP_NAME || "きろく";
+    document.title = document.title || APP_CONFIG.APP_NAME || "kiloQ";
 
     appState.theme = loadThemePreference();
     applyTheme(appState.theme.baseColor);
     appState.liff.profile = loadCachedProfile();
     appState.workout = createEmptyWorkout();
     appState.history = loadWorkoutHistory();
+    appState.menus = MenuRepository.loadAll();
     syncWorkoutUser();
     if (isRankingEnabled()) {
       appState.rankingData = await getRanking();
@@ -540,6 +552,13 @@ import {
       '  <div class="input-head-row input-page-head">',
       renderSettingsTrigger(),
       '    <h2 class="panel-title">記録入力</h2>',
+      // 「よくやるメニュー」から始める（保存したメニューとおすすめ）。保存もこのシートから
+      renderActionButton({
+        label: "📋 メニュー",
+        title: "トレーニングメニュー",
+        variant: "pill-button start-from-history",
+        action: "open-menu-modal"
+      }),
       appState.history.length
         ? renderActionButton({
           label: "履歴から始める",
@@ -549,6 +568,7 @@ import {
         : "",
       "  </div>",
       renderSettingsModal(),
+      renderMenuModal(),
       '  <section class="panel-card input-card workout-meta-card" aria-label="ワークアウトタイトル">',
       fieldTemplate({
         label: "ワークアウトタイトル",
@@ -716,6 +736,8 @@ import {
 
   const ApiWorkoutRepository = createApiWorkoutRepository(resolveGroupKey, mockRanking);
 
+  const MenuRepository = createLocalStorageMenuRepository();
+
   function handleClick(event) {
     const button = event.target.closest("button");
     if (!button) {
@@ -771,6 +793,22 @@ import {
         break;
       case "open-history-input":
         setActiveTab("history");
+        break;
+      case "open-menu-modal":
+        openMenuModal();
+        break;
+      case "close-menu-modal":
+        appState.ui.menuModalOpen = false;
+        renderInput();
+        break;
+      case "save-menu":
+        saveCurrentAsMenu();
+        break;
+      case "apply-menu":
+        applyMenu(button.getAttribute("data-menu-id"));
+        break;
+      case "delete-menu":
+        deleteMenu(button.getAttribute("data-menu-id"));
         break;
       case "sample-workout":
         applySampleWorkout();
@@ -853,6 +891,12 @@ import {
   function handleInput(event) {
     const target = event.target;
     if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    // メニューの名前は入力中に描き直さない（カーソルが飛ばないように）
+    if (target.hasAttribute("data-menu-field")) {
+      appState.ui.menuName = target.value;
       return;
     }
 
@@ -1559,6 +1603,174 @@ import {
     ].join("");
   }
 
+  // ---- トレーニングメニュー（テンプレート） ----
+
+  function openMenuModal() {
+    appState.menus = MenuRepository.loadAll();
+    // 名前の初期値はワークアウトのタイトル（自動で入る「きろく」などはメニュー名にしない）
+    const title = (appState.workout.title || "").trim();
+    appState.ui.menuName = title && title !== getDefaultWorkoutTitle(appState.workout.user) ? title : "";
+    appState.ui.menuModalOpen = true;
+    renderInput();
+  }
+
+  function findMenu(menuId) {
+    const saved = appState.menus.find(function (menu) {
+      return menu.menuId === menuId;
+    });
+    if (saved) {
+      return saved;
+    }
+    const preset = MENU_PRESETS.find(function (item) {
+      return item.menuId === menuId;
+    });
+    return preset ? expandMenuPreset(preset) : null;
+  }
+
+  function saveCurrentAsMenu() {
+    const name = (appState.ui.menuName || "").trim();
+    if (!name) {
+      setStatus("メニューの名前を入れてください。", "warn");
+      return;
+    }
+    if (countNamedExercises(appState.workout) === 0) {
+      setStatus("種目を1つ以上選んでから保存してください。", "warn");
+      return;
+    }
+    const existing = MenuRepository.findByName(name);
+    if (existing && !window.confirm("「" + name + "」はもうあります。今の入力で上書きしますか？")) {
+      return;
+    }
+    if (!existing && appState.menus.length >= MAX_MENUS) {
+      setStatus("メニューは " + MAX_MENUS + " 件まで保存できます。使わないものを削除してください。", "warn");
+      return;
+    }
+    appState.menus = MenuRepository.save(buildMenuFromWorkout(appState.workout, name, existing && existing.menuId));
+    renderInput();
+    setStatus("「" + name + "」をメニューに保存しました。", "info");
+  }
+
+  function applyMenu(menuId) {
+    const menu = findMenu(menuId);
+    if (!menu) {
+      setStatus("選んだメニューが見つかりませんでした。", "warn");
+      return;
+    }
+    if (
+      countNamedExercises(appState.workout) > 0 &&
+      !window.confirm("今の入力内容を、メニュー「" + menu.name + "」で置き換えますか？")
+    ) {
+      return;
+    }
+    appState.workout = createWorkoutFromMenu(menu);
+    syncWorkoutUser();
+    appState.ui.menuModalOpen = false;
+    appState.ui.expandedExerciseId = appState.workout.exercises[0] ? appState.workout.exercises[0].exerciseId : "";
+    appState.activeTab = "input";
+    renderWorkoutViews();
+    setStatus("メニュー「" + menu.name + "」を入れました。重さ・回数を直して記録してください。", "info");
+  }
+
+  function deleteMenu(menuId) {
+    const menu = findMenu(menuId);
+    if (!menu || !window.confirm("メニュー「" + menu.name + "」を削除しますか？")) {
+      return;
+    }
+    appState.menus = MenuRepository.deleteById(menuId);
+    renderInput();
+    setStatus("メニューを削除しました。", "info");
+  }
+
+  function renderMenuRow(menu, deletable) {
+    const names = (menu.exercises || [])
+      .map(function (exercise) {
+        return exercise.name;
+      })
+      .join("・");
+    return [
+      '<li class="menu-row">',
+      '  <div class="menu-row-copy">',
+      '    <p class="menu-row-name">' + escapeHtml(menu.name) + '<span class="menu-row-meta">' + escapeHtml(summarizeMenu(menu)) + "</span></p>",
+      '    <p class="menu-row-exercises">' + escapeHtml(names) + "</p>",
+      "  </div>",
+      '  <div class="menu-row-actions">',
+      renderActionButton({
+        label: "入れる",
+        title: "「" + menu.name + "」を入れる",
+        variant: "pill-button menu-row-button",
+        action: "apply-menu",
+        attrs: { "data-menu-id": menu.menuId }
+      }),
+      deletable
+        ? renderActionButton({
+          label: "削除",
+          title: "「" + menu.name + "」を削除",
+          variant: "danger-button menu-row-button",
+          action: "delete-menu",
+          attrs: { "data-menu-id": menu.menuId }
+        })
+        : "",
+      "  </div>",
+      "</li>"
+    ].join("");
+  }
+
+  function renderMenuModal() {
+    if (!appState.ui.menuModalOpen) {
+      return "";
+    }
+    const canSave = countNamedExercises(appState.workout) > 0;
+    // 並び：今の入力を保存 → マイメニュー（保存したもの）→ おすすめ
+    return [
+      '<div class="settings-modal-backdrop">',
+      '  <button class="settings-modal-scrim" data-action="close-menu-modal" type="button" aria-label="閉じる"></button>',
+      '  <section class="settings-modal menu-modal" role="dialog" aria-modal="true" aria-label="トレーニングメニュー">',
+      '    <div class="settings-modal-head">',
+      '      <h3 class="panel-title">📋 トレーニングメニュー</h3>',
+      '      <button class="ghost-button modal-close-button" data-action="close-menu-modal" type="button">閉じる</button>',
+      "    </div>",
+      '    <p class="settings-modal-copy">よくやるメニューを保存しておくと、種目とセット（重さ・回数）をまとめて入れられます。</p>',
+      '    <div class="menu-save-row">',
+      '      <label class="tile-field menu-name-field">',
+      '        <span class="field-label">今の入力をメニューに保存</span>',
+      '        <input class="text-input" data-menu-field="name" type="text" maxlength="30" placeholder="胸の日 など" value="' +
+        escapeHtml(appState.ui.menuName || "") +
+        '"' +
+        (canSave ? "" : " disabled") +
+        " />",
+      "      </label>",
+      renderActionButton({
+        label: "保存",
+        title: "今の入力をメニューに保存",
+        variant: "pill-button menu-save-button",
+        action: "save-menu",
+        disabled: !canSave
+      }),
+      "    </div>",
+      canSave ? "" : '    <p class="menu-hint">種目を選ぶと、今の入力をメニューとして保存できます。</p>',
+      '    <div class="menu-scroll">',
+      '      <h4 class="menu-section-title">マイメニュー</h4>',
+      appState.menus.length
+        ? '      <ul class="menu-list">' +
+          appState.menus
+            .map(function (menu) {
+              return renderMenuRow(menu, true);
+            })
+            .join("") +
+          "</ul>"
+        : '      <p class="menu-hint">まだありません。上から保存すると、ここに並びます。</p>',
+      '      <h4 class="menu-section-title">おすすめ</h4>',
+      '      <ul class="menu-list">' +
+        MENU_PRESETS.map(function (preset) {
+          return renderMenuRow(expandMenuPreset(preset), false);
+        }).join("") +
+        "</ul>",
+      "    </div>",
+      "  </section>",
+      "</div>"
+    ].join("");
+  }
+
   function getUserInitial(displayName) {
     const normalized = String(displayName || "").trim();
     if (!normalized) {
@@ -1757,7 +1969,7 @@ import {
         })
         .join(""),
       '  <div class="preview-bubble-footer">' +
-      escapeHtml("Created by " + (APP_CONFIG.APP_NAME || "きろく") + " ›") +
+      escapeHtml("Created by " + (APP_CONFIG.APP_NAME || "kiloQ") + " ›") +
       "</div>",
       "</section>"
     ].join("");

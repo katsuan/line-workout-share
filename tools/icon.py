@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""きろく（KILOQ）のアイコンを作る。英字の「KILO」は重さの kg のキロ（きろく＝KILO＋Q）。
+"""きろく（kiloQ）のアイコンを作る。英字の「kilo」は重さの kg のキロ（きろく＝kilo＋Q。kilo は小文字、Q だけ大文字）。
 
 おくるん（OQRN）・さくせん盤（SAQSEN）のアイコンと同じ角の丸い四角に、きろくのオレンジのグラデーション
 （js/constants.js の DEFAULT_THEME.baseColor #C96A2D が濃いほう）。
 中は、白いウエイトのプレート（太い輪＋面の溝＋まん中の穴）と、輪の右下（45°）のふちに斜めに置いた小さなダンベル。
-プレート（輪）＋ダンベル（しっぽ）で Q に見せる（バーを1本出すだけだと虫めがねに見えるので、ダンベルにする）（KILOQ の Q）。後ろにうっすらノートの罫線（記録）。
+プレート（輪）＋ダンベル（しっぽ）で Q に見せる（バーを1本出すだけだと虫めがねに見えるので、ダンベルにする）（kiloQ の Q）。後ろにうっすらノートの罫線（記録）。
 
   icon.svg              … ファビコン
   apple-touch-icon.png  … iPhone のホーム画面（180px）
   icon-512.png          … 大きいアイコン（512px。角は丸い）
   icon-maskable-512.png … ホーム画面に追加したとき用（四隅まで塗る。端末が自分で丸や角丸に切る）
   icon-32.png           … SVG のファビコンを使えないブラウザ用（32px）
-  logo.svg              … 横長のロゴ「KILOQ」。ノートの罫線の上に文字を並べ、Q はアイコンと同じプレート＋ダンベル。
-                          K・I・L・O の字形は Jua（SIL Open Font License 1.1、~/Library/Fonts/Jua.ttf。おくるん・さくせん盤のロゴと同じ）。fontTools が必要
+  logo.svg              … 横長のロゴ「kiloQ」。ノートの罫線の上に文字を並べ、Q はアイコンと同じプレート＋ダンベル。
+                          k・i・l・o の字形は Jua（SIL Open Font License 1.1、~/Library/Fonts/Jua.ttf。おくるん・さくせん盤のロゴと同じ）。fontTools が必要
 
 Pillow が必要。使い方: python3 tools/icon.py
 """
@@ -164,7 +164,7 @@ def png(size, rounded=True):
     return img.resize((size, size), Image.LANCZOS)
 
 
-# ---- 横長のロゴ「KILOQ」（ノートの罫線の上の文字。Q＝プレート＋ダンベル） ----
+# ---- 横長のロゴ「kiloQ」（ノートの罫線の上の文字。Q＝プレート＋ダンベル） ----
 
 FONT_PATH = Path.home() / "Library" / "Fonts" / "Jua.ttf"
 
@@ -184,14 +184,14 @@ def logo_svg():
         glyphs[cmap[ord(char)]].draw(pen)
         return pen.bounds
 
-    top, bottom = bounds("I")[3], bounds("I")[1]  # 上下が平らな I で文字の高さを決める
+    top, bottom = bounds("I")[3], bounds("I")[1]  # 上下が平らな大文字の I で字の高さ（Q の輪の高さ）を決める。小文字はベースラインにそろう
     h = top - bottom
     gap = h * 0.09
     thin = h * 0.05  # ふちを背景の色でなぞる線の幅（内側に半分ずつ削れる）
     w = h * 0.21 - thin  # Q（プレートの輪）の線は、細くした字と同じ太さ
     r = h / 2 - w / 2
     paths, x, q = [], 0.0, None
-    for char in "KILOQ":
+    for char in "kiloQ":
         if char == "Q":
             q = (x + r + w / 2, h / 2)
             x += 2 * r + w + gap
@@ -217,12 +217,12 @@ def logo_svg():
     inset = h * 0.22
     rules = "".join(f'<path d="M{num(x0 + inset)} {num(y)}H{num(x0 + width - inset)}" {rule}/>' for y in (-h * 0.2, h * 1.2))
     return (
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{num(x0)} {num(y0)} {num(width)} {num(height)}" role="img" aria-label="KILOQ（きろく）">'
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{num(x0)} {num(y0)} {num(width)} {num(height)}" role="img" aria-label="kiloQ（きろく）">'
         f'<defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="{num(x0)}" y1="{num(y0)}" x2="{num(x0 + width)}" y2="{num(y0 + height)}">'
         f'<stop offset="0" stop-color="{hex_(ORANGE_LIGHT)}"/><stop offset="1" stop-color="{hex_(ORANGE_DARK)}"/></linearGradient></defs>'
         f'<rect x="{num(x0)}" y="{num(y0)}" width="{num(width)}" height="{num(height)}" rx="{num(h * 0.3)}" fill="url(#g)"/>'
         + rules
-        # フォントの字（K・I・L・O）は太さが1種類なので、ふちを背景と同じ色でなぞって少し細く見せる
+        # フォントの字（k・i・l・o）は太さが1種類なので、ふちを背景と同じ色でなぞって少し細く見せる
         + f'<g fill="#ffffff" stroke="url(#g)" stroke-width="{num(thin)}" stroke-linejoin="round">' + "".join(f'<path d="{d}"/>' for d in paths) + "</g>"
         + mark_svg(qx, qy, r, w, k, "url(#g)")
         + "</svg>\n"

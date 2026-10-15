@@ -1,4 +1,4 @@
-import { FEATURE_FLAGS, MAX_HISTORY_ITEMS, STORAGE_KEYS } from "./constants.js";
+import { FEATURE_FLAGS, MAX_HISTORY_ITEMS, MAX_MENUS, STORAGE_KEYS } from "./constants.js";
 
 export function createLocalStorageWorkoutRepository(hydrateWorkout) {
   return {
@@ -60,6 +60,47 @@ export function createApiWorkoutRepository(resolveGroupKey, mockRanking) {
       return mockRanking({
         groupKey: resolveGroupKey()
       });
+    }
+  };
+}
+
+// トレーニングメニュー（テンプレート）。この端末の localStorage に、新しく保存したものから並べて残す
+export function createLocalStorageMenuRepository() {
+  return {
+    loadAll: function () {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEYS.menus) || "[]");
+        return Array.isArray(parsed)
+          ? parsed.filter(function (menu) {
+            return menu && menu.menuId && menu.name && Array.isArray(menu.exercises);
+          })
+          : [];
+      } catch (error) {
+        console.warn("Failed to parse menus:", error);
+        return [];
+      }
+    },
+    findByName: function (name) {
+      return this.loadAll().find(function (menu) {
+        return menu.name === name;
+      });
+    },
+    // 同じ名前のメニューは置き換える（呼ぶ側で上書きを確認する）
+    save: function (menu) {
+      const list = this.loadAll().filter(function (item) {
+        return item.menuId !== menu.menuId && item.name !== menu.name;
+      });
+      list.unshift(menu);
+      const trimmed = list.slice(0, MAX_MENUS);
+      localStorage.setItem(STORAGE_KEYS.menus, JSON.stringify(trimmed));
+      return trimmed;
+    },
+    deleteById: function (menuId) {
+      const nextList = this.loadAll().filter(function (item) {
+        return item.menuId !== menuId;
+      });
+      localStorage.setItem(STORAGE_KEYS.menus, JSON.stringify(nextList));
+      return nextList;
     }
   };
 }

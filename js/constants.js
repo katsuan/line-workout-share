@@ -15,10 +15,13 @@ export const STORAGE_KEYS = {
   history: "liff-workout-history",
   theme: "liff-workout-theme",
   profile: "liff-workout-profile",
-  previewOpen: "liff-workout-preview-open"
+  previewOpen: "liff-workout-preview-open",
+  menus: "liff-workout-menus"
 };
 
 export const MAX_HISTORY_ITEMS = 10;
+// 保存できるトレーニングメニュー（テンプレート）の数
+export const MAX_MENUS = 20;
 export const MAX_SETS_PER_FLEX_EXERCISE = 8;
 export const MAX_EXERCISES_PER_BUBBLE = 4;
 export const MAX_FLEX_UNITS_PER_BUBBLE = 16;
@@ -70,3 +73,58 @@ export const EXERCISE_CATALOG = [
 ];
 
 export const MUSCLE_FILTERS = ["all", "胸", "背中", "脚", "肩", "腕", "体幹", "その他"];
+
+// おすすめのトレーニングメニュー（はじめから入っているテンプレート）。
+// 種目は EXERCISE_CATALOG の id、セットは「回数 × セット数」。重さは人によるので空のまま入れる
+export const MENU_PRESETS = [
+  {
+    menuId: "preset-chest",
+    name: "胸の日",
+    exercises: [
+      { catalogId: "bench-press", sets: 3, reps: 10 },
+      { catalogId: "incline-dumbbell-press", sets: 3, reps: 10 },
+      { catalogId: "pec-deck", sets: 3, reps: 12 },
+      { catalogId: "triceps-pushdown", sets: 3, reps: 12 }
+    ]
+  },
+  {
+    menuId: "preset-back",
+    name: "背中の日",
+    exercises: [
+      { catalogId: "lat-pulldown", sets: 3, reps: 10 },
+      { catalogId: "seated-row", sets: 3, reps: 10 },
+      { catalogId: "one-hand-row", sets: 3, reps: 10 },
+      { catalogId: "barbell-curl", sets: 3, reps: 10 }
+    ]
+  },
+  {
+    menuId: "preset-legs",
+    name: "脚の日",
+    exercises: [
+      { catalogId: "barbell-squat", sets: 3, reps: 10 },
+      { catalogId: "leg-press", sets: 3, reps: 12 },
+      { catalogId: "romanian-deadlift", sets: 3, reps: 10 },
+      { catalogId: "leg-extension", sets: 3, reps: 12 }
+    ]
+  },
+  {
+    menuId: "preset-shoulders-arms",
+    name: "肩・腕の日",
+    exercises: [
+      { catalogId: "shoulder-press", sets: 3, reps: 10 },
+      { catalogId: "side-raise", sets: 3, reps: 15 },
+      { catalogId: "dumbbell-curl", sets: 3, reps: 12 },
+      { catalogId: "skull-crusher", sets: 3, reps: 12 }
+    ]
+  },
+  {
+    menuId: "preset-full-body",
+    name: "全身（はじめての人に）",
+    exercises: [
+      { catalogId: "bench-press", sets: 3, reps: 10 },
+      { catalogId: "lat-pulldown", sets: 3, reps: 10 },
+      { catalogId: "leg-press", sets: 3, reps: 10 },
+      { catalogId: "ab-wheel", sets: 2, reps: 10 }
+    ]
+  }
+];

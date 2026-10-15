@@ -257,6 +257,107 @@
   min-height: 36px;
 }
 
+/* トレーニングメニュー（テンプレート）のシート：上に保存、下の一覧だけスクロール */
+.menu-modal {
+  max-height: calc(100dvh - 120px - env(safe-area-inset-bottom));
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
+}
+
+.menu-save-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.menu-save-button {
+  min-height: 44px;
+}
+
+.menu-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.menu-scroll {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0 -4px;
+  padding: 0 4px 4px;
+}
+
+.menu-section-title {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.menu-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.menu-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--primary-outline);
+  border-radius: 16px;
+  background: var(--primary-surface);
+}
+
+.menu-row-copy {
+  min-width: 0;
+}
+
+.menu-row-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+  margin: 0;
+  font-weight: 700;
+}
+
+.menu-row-meta {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.menu-row-exercises {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.menu-row-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.menu-row-button {
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+}
+
 .exercise-meta,
 .history-meta,
 .ranking-meta,

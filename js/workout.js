@@ -1,6 +1,7 @@
 import {
   APP_CONFIG,
   DEFAULT_USER,
+  EXERCISE_CATALOG,
   FLEX_THEME,
   MAX_EXERCISES_PER_BUBBLE,
   MAX_FLEX_UNITS_PER_BUBBLE,
@@ -291,7 +292,7 @@ function buildWorkoutBubble(workout, exercises, bubbleIndex, bubbleCount, theme)
       contents: [
         {
           type: "text",
-          text: "Created by " + (APP_CONFIG.APP_NAME || "きろく") + " ›",
+          text: "Created by " + (APP_CONFIG.APP_NAME || "kiloQ") + " ›",
           size: "xs",
           color: "#FFFFFF",
           align: "center",
@@ -507,4 +508,90 @@ function buildLiffLaunchUrl() {
     return "";
   }
   return "https://liff.line.me/" + liffId;
+}
+
+// ---- トレーニングメニュー（テンプレート） ----
+// メニューは { menuId, name, exercises: [{ catalogId, isCustom, primaryMuscle, name, memo, sets: [{ weight, reps }] }], updatedAt }
+
+// 今の入力からメニューを作る。種目名のない種目は外し、重さ・回数は入っているものをそのまま残す（次に入れたときの目安）
+export function buildMenuFromWorkout(workout, name, menuId) {
+  const exercises = (workout.exercises || [])
+    .filter(function (exercise) {
+      return String(exercise.name || "").trim();
+    })
+    .map(function (exercise) {
+      const sets = (exercise.sets || []).map(function (set) {
+        return { weight: set.weight === "" ? "" : set.weight, reps: set.reps === "" ? "" : set.reps };
+      });
+      return {
+        catalogId: exercise.catalogId || "",
+        isCustom: Boolean(exercise.isCustom),
+        primaryMuscle: exercise.primaryMuscle || "",
+        name: String(exercise.name).trim(),
+        memo: String(exercise.memo || "").trim(),
+        sets: sets.length ? sets : [{ weight: "", reps: "" }]
+      };
+    });
+  return {
+    menuId: menuId || generateId("menu"),
+    name: name,
+    exercises: exercises,
+    updatedAt: new Date().toISOString()
+  };
+}
+
+// おすすめのメニュー（MENU_PRESETS の「回数 × セット数」）を、保存したメニューと同じ形にする
+export function expandMenuPreset(preset) {
+  return {
+    menuId: preset.menuId,
+    name: preset.name,
+    isPreset: true,
+    exercises: preset.exercises
+      .map(function (item) {
+        const catalog = EXERCISE_CATALOG.find(function (entry) {
+          return entry.id === item.catalogId;
+        });
+        if (!catalog) {
+          return null;
+        }
+        const sets = [];
+        for (let i = 0; i < item.sets; i += 1) {
+          sets.push({ weight: "", reps: item.reps });
+        }
+        return { catalogId: catalog.id, isCustom: false, primaryMuscle: catalog.muscle, name: catalog.name, memo: "", sets: sets };
+      })
+      .filter(Boolean)
+  };
+}
+
+// メニューから新しい入力を作る（タイトルはメニュー名、日付は今日）
+export function createWorkoutFromMenu(menu) {
+  const workout = createEmptyWorkout();
+  workout.title = menu.name || "";
+  workout.exercises = (menu.exercises || []).map(function (item) {
+    return Object.assign(createEmptyExercise(), {
+      catalogId: item.catalogId || "",
+      isCustom: Boolean(item.isCustom),
+      primaryMuscle: item.primaryMuscle || "",
+      selectionMuscle: item.primaryMuscle || (item.isCustom ? "その他" : ""),
+      name: item.name || "",
+      memo: item.memo || "",
+      sets: (item.sets && item.sets.length ? item.sets : [{ weight: "", reps: "" }]).map(function (set) {
+        return Object.assign(createEmptySet(), { weight: set.weight, reps: set.reps });
+      })
+    });
+  });
+  if (!workout.exercises.length) {
+    workout.exercises = [createEmptyExercise()];
+  }
+  return calculateWorkout(workout);
+}
+
+// 「4種目・12セット」のような要約
+export function summarizeMenu(menu) {
+  const exercises = menu.exercises || [];
+  const sets = exercises.reduce(function (sum, exercise) {
+    return sum + (exercise.sets || []).length;
+  }, 0);
+  return exercises.length + "種目・" + sets + "セット";
 }
