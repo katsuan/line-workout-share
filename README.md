@@ -226,3 +226,7 @@ GitHub Pages で配信する、静的なワークアウト共有アプリです�
 
 - API キーや秘密情報は置かない前提です。
 - GitHub Pages に配置すればそのまま動く構成を維持します。
+
+## 紹介の窓口
+
+「📤 キロっくを紹介する」（入力・履歴の下）は、おくるんの `shared/tool-share.js`（`data-tool="kiloq"`）。押すとおくるんでオレンジの紹介カードを作って LINE に送れる（リンクのシェアも選べる）。中身は line-share の `data/hub-links.json` の `key: "kiloq"`。
