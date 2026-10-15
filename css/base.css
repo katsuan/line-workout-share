@@ -137,10 +137,8 @@ button {
   backdrop-filter: blur(8px);
 }
 
-.summary-grid,
 .ranking-grid,
-.preview-grid,
-.history-grid {
+.preview-grid {
   display: grid;
   gap: 12px;
 }

@@ -3,7 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Workout Share</title>
+    <title>きろく｜筋トレの記録を LINE で送る</title>
+    <meta name="description" content="きろく（KIROQ）。筋トレの種目・重さ・回数を記録して、LINE にカードで送れます。" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="きろく｜筋トレの記録を LINE で送る" />
+    <meta property="og:description" content="筋トレの種目・重さ・回数を記録して、LINE にカードで送れます。" />
+    <meta property="og:url" content="https://katsuan.github.io/line-workout-share/" />
+    <meta property="og:site_name" content="きろく（KIROQ）" />
+    <meta property="og:image" content="https://katsuan.github.io/line-workout-share/ogp.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="きろく（KIROQ）：筋トレの種目・重さ・回数を LINE にカードで送れる" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" content="#f7f4ef" />
+    <!-- アイコン・ロゴ・OGP は tools/icon.py・tools/ogp.py で作る -->
+    <link rel="icon" href="./icon.svg" type="image/svg+xml" />
+    <link rel="icon" href="./icon-32.png" type="image/png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="stylesheet" href="./style.css" />
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script src="./config.js"></script>
@@ -11,6 +28,11 @@
   </head>
   <body>
     <div class="app-shell">
+      <!-- 見出しは1行：アイコン＋名前（左）と、横長のロゴ（右）。さくせん盤と同じ形 -->
+      <header class="brand-row">
+        <h1 class="brand-name"><img class="brand-icon" src="./icon.svg" alt="" width="28" height="28" />きろく</h1>
+        <img class="brand-logo" src="./logo.svg" alt="KIROQ" width="78" height="28" />
+      </header>
       <section class="status-panel" id="status-panel" aria-live="polite"></section>
 
       <nav class="tab-nav" id="tab-nav" aria-label="メインタブ">

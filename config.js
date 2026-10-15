@@ -1,6 +1,6 @@
 window.APP_CONFIG = {
   LIFF_ID: "2009927582-2isjfmkk",
-  APP_NAME: "Workout Share",
+  APP_NAME: "きろく",
   DEFAULT_GROUP_KEY: "default-group",
   FEATURE_FLAGS: {
     enableDebugMode: false,

@@ -126,9 +126,7 @@ export function sanitizeWorkout(workout, resolveGroupKey) {
   const calculatedWorkout = calculateWorkout(workout);
   const validExercises = calculatedWorkout.exercises
     .map(function (exercise) {
-      const validSets = (exercise.sets || []).filter(function (set) {
-        return isValidSetInput(toNullableNumber(set.weight), toNullableNumber(set.reps));
-      });
+      const validSets = (exercise.sets || []).filter(isFilledSet);
 
       return Object.assign({}, exercise, {
         name: (exercise.name || "").trim(),
@@ -169,9 +167,9 @@ export function sanitizeWorkout(workout, resolveGroupKey) {
 export function getDefaultWorkoutTitle(user) {
   const displayName = user ? String(user.displayName || "").trim() : "";
   if (displayName && displayName.toLowerCase() !== "anonymous") {
-    return displayName + "'s Workout Share";
+    return displayName + "のきろく";
   }
-  return "Workout Share";
+  return "きろく";
 }
 
 export function resolveWorkoutTitle(title, user) {
@@ -207,16 +205,13 @@ export function countNamedExercises(workout) {
   }).length;
 }
 
-export function countValidSets(workout) {
-  return sanitizeWorkout(workout).exercises.reduce(function (sum, exercise) {
-    return sum + (exercise.sets || []).length;
-  }, 0);
+// 重さと回数がどちらも正の数で入っているセットだけを、記録として数える
+export function isFilledSet(set) {
+  return isValidSetInput(toNullableNumber(set.weight), toNullableNumber(set.reps));
 }
 
-export function findWorkoutMax1rm(workout) {
-  return (workout.exercises || []).reduce(function (max, exercise) {
-    return Math.max(max, Number(exercise.maxEstimated1rm || 0));
-  }, 0);
+export function countValidSets(exercise) {
+  return (exercise.sets || []).filter(isFilledSet).length;
 }
 
 function buildWorkoutBubble(workout, exercises, bubbleIndex, bubbleCount, theme) {
@@ -296,7 +291,7 @@ function buildWorkoutBubble(workout, exercises, bubbleIndex, bubbleCount, theme)
       contents: [
         {
           type: "text",
-          text: "Powered by " + (APP_CONFIG.APP_NAME || "Workout Share"),
+          text: "Created by " + (APP_CONFIG.APP_NAME || "きろく") + " ›",
           size: "xs",
           color: "#FFFFFF",
           align: "center",

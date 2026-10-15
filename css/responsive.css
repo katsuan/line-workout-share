@@ -1,9 +1,4 @@
 @media (min-width: 760px) {
-  .form-grid.two-col {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .history-grid,
   .ranking-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -25,23 +20,13 @@
 }
 
 @media (max-width: 759px) {
-  .summary-grid,
   .preview-grid,
-  .history-grid,
   .ranking-grid {
     grid-template-columns: 1fr;
   }
 
   .app-shell {
     padding: 8px 10px 110px;
-  }
-
-  .summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .summary-grid .summary-card:last-child:nth-child(odd) {
-    grid-column: 1 / -1;
   }
 
   .tab-button {
@@ -85,8 +70,7 @@
     padding: 6px 12px;
   }
 
-  .exercise-header,
-  .exercise-selected-head {
+  .exercise-header {
     flex-direction: row;
     align-items: center;
   }
@@ -110,23 +94,9 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .quick-exercise-grid {
-    grid-template-columns: 1fr;
-  }
-
   .button-row .pill-button,
-  .button-row .outline-button,
-  .button-row .mini-button {
+  .button-row .outline-button {
     width: 100%;
-  }
-
-  .set-row-main {
-    grid-template-columns: 52px repeat(3, minmax(0, 1fr));
-    gap: 6px;
-  }
-
-  .set-side {
-    grid-template-rows: 22px 36px;
   }
 
   .tile-field {
@@ -136,14 +106,6 @@
   .tile-field .text-input,
   .tile-field .number-input {
     font-size: 0.94rem;
-  }
-
-  .compact-tile-field {
-    min-height: 50px;
-  }
-
-  .compact-tile-field .number-input {
-    font-size: 1rem;
   }
 
   .compact-action-button {
@@ -174,10 +136,6 @@
   .history-actions-inline {
     display: flex;
     grid-template-columns: none;
-  }
-
-  .input-utility-card .button-row {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .exercise-actions .compact-action-button .action-label {

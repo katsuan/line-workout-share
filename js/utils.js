@@ -18,6 +18,17 @@ export function formatMetric(value, unit, digits) {
   return Number(value).toFixed(precision) + (unit ? " " + unit : "");
 }
 
+// 画面表示用：3桁区切りで、空の値も 0 として表示する（Flex 用は formatMetric）
+export function formatLocaleMetric(value, unit, digits) {
+  const fractionDigits = typeof digits === "number" ? digits : 0;
+  return (
+    Number(value || 0).toLocaleString("ja-JP", {
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits
+    }) + (unit ? " " + unit : "")
+  );
+}
+
 export function roundNumber(value, digits) {
   const precision = Math.pow(10, digits || 0);
   return Math.round(Number(value || 0) * precision) / precision;

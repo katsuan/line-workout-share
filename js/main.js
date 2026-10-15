@@ -8,35 +8,39 @@ import {
   STORAGE_KEYS
 } from "./constants.js";
 import {
-  applyTheme as applyThemeToDocument,
+  applyTheme,
   getFlexTheme as buildFlexTheme,
-  loadThemePreference as loadStoredThemePreference,
-  normalizeHexColor as normalizeThemeHexColor,
-  saveThemePreference as persistThemePreference
+  loadThemePreference,
+  normalizeHexColor,
+  saveThemePreference
 } from "./theme.js";
-import {
-  initLiff as initializeLiffState,
-  isAnonymousProfile as checkAnonymousProfile,
-  isLiffShareAvailable as checkLiffShareAvailable,
-  loadCachedProfile as readCachedProfile,
-  safelyGetLiffContext as readLiffContext
-} from "./liff.js";
+import { initLiff as initializeLiffState, loadCachedProfile, safelyGetLiffContext } from "./liff.js";
 import {
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
-  calculateWorkout as calculateWorkoutMetrics,
-  countNamedExercises as countNamedExercisesValue,
-  createEmptyExercise as createExerciseModel,
-  createEmptySet as createSetModel,
-  createEmptyWorkout as createWorkoutModel,
-  getDefaultWorkoutTitle as buildDefaultWorkoutTitle,
-  hydrateWorkout as hydrateWorkoutModel,
-  resolveWorkoutTitle as resolveWorkoutTitleText,
+  calculateWorkout,
+  countNamedExercises,
+  countValidSets,
+  createEmptyExercise,
+  createEmptySet,
+  createEmptyWorkout,
+  getDefaultWorkoutTitle,
+  hydrateWorkout,
+  isFilledSet,
+  resolveWorkoutTitle,
   sanitizeWorkout as sanitizeWorkoutModel
 } from "./workout.js";
 import {
   createApiWorkoutRepository,
   createLocalStorageWorkoutRepository
 } from "./repositories.js";
+import {
+  cssEscape,
+  escapeHtml,
+  formatLocaleMetric,
+  generateId,
+  getTodayLocalDate,
+  roundNumber
+} from "./utils.js";
 
 (function () {
 
@@ -54,8 +58,6 @@ import {
       openJsonPreview: false,
       previewOpen: loadPreviewOpen(),
       metricsOpen: false,
-      catalogFilter: "all",
-      catalogQuery: "",
       suppressScrollSpyUntil: 0,
       expandedExerciseId: null,
       memoOpenExerciseIds: {},
@@ -88,16 +90,6 @@ import {
     return isDebugModeEnabled() && Boolean(FEATURE_FLAGS.enableRanking);
   }
 
-  function getFilteredExerciseCatalog() {
-    return EXERCISE_CATALOG.filter(function (exercise) {
-      const matchesFilter =
-        appState.ui.catalogFilter === "all" || exercise.muscle === appState.ui.catalogFilter;
-      const query = appState.ui.catalogQuery.trim();
-      const matchesQuery = !query || exercise.name.indexOf(query) !== -1;
-      return matchesFilter && matchesQuery;
-    });
-  }
-
   function findCatalogExercise(catalogId) {
     return EXERCISE_CATALOG.find(function (item) {
       return item.id === catalogId;
@@ -107,7 +99,7 @@ import {
   async function initApp() {
     cacheElements();
     bindEvents();
-    document.title = APP_CONFIG.APP_NAME || "Workout Share";
+    document.title = document.title || APP_CONFIG.APP_NAME || "きろく";
 
     appState.theme = loadThemePreference();
     applyTheme(appState.theme.baseColor);
@@ -190,22 +182,6 @@ import {
     }
   }
 
-  function loadCachedProfile() {
-    return readCachedProfile();
-  }
-
-  function isAnonymousProfile(profile) {
-    return checkAnonymousProfile(profile);
-  }
-
-  function loadThemePreference() {
-    return loadStoredThemePreference();
-  }
-
-  function saveThemePreference() {
-    persistThemePreference(appState.theme);
-  }
-
   function updateTheme(baseColor) {
     const normalizedColor = normalizeHexColor(baseColor);
     if (!normalizedColor) {
@@ -213,17 +189,13 @@ import {
     }
     appState.theme.baseColor = normalizedColor;
     applyTheme(normalizedColor);
-    saveThemePreference();
+    saveThemePreference(appState.theme);
   }
 
   function resetTheme() {
     appState.theme = Object.assign({}, DEFAULT_THEME);
     applyTheme(appState.theme.baseColor);
-    saveThemePreference();
-  }
-
-  function applyTheme(baseColor) {
-    applyThemeToDocument(baseColor);
+    saveThemePreference(appState.theme);
   }
 
   function getFlexTheme() {
@@ -232,20 +204,17 @@ import {
     return buildFlexTheme(baseColor);
   }
 
-  function normalizeHexColor(value) {
-    return normalizeThemeHexColor(value);
+  function findExercise(exerciseId) {
+    return appState.workout.exercises.find(function (item) {
+      return item.exerciseId === exerciseId;
+    });
   }
 
-  function createEmptyWorkout() {
-    return createWorkoutModel();
-  }
-
-  function createEmptyExercise() {
-    return createExerciseModel();
-  }
-
-  function createEmptySet() {
-    return createSetModel();
+  // 入力・プレビュー・タブをまとめて描き直す（ワークアウト全体が変わったとき）
+  function renderWorkoutViews() {
+    renderInput();
+    renderPreview();
+    renderShell();
   }
 
   function addExercise(catalogId) {
@@ -257,9 +226,7 @@ import {
     appState.activeTab = "input";
     appState.ui.expandedExerciseId = exercise.exerciseId;
     touchWorkout();
-    renderInput();
-    renderPreview();
-    renderShell();
+    renderWorkoutViews();
     scrollToExerciseCard(exercise.exerciseId);
   }
 
@@ -284,9 +251,7 @@ import {
     appState.activeTab = "input";
     appState.ui.expandedExerciseId = exercise.exerciseId;
     touchWorkout();
-    renderInput();
-    renderPreview();
-    renderShell();
+    renderWorkoutViews();
     scrollToExerciseCard(exercise.exerciseId);
   }
 
@@ -312,15 +277,11 @@ import {
     }
     delete appState.ui.memoOpenExerciseIds[exerciseId];
     touchWorkout();
-    renderInput();
-    renderPreview();
-    renderShell();
+    renderWorkoutViews();
   }
 
   function addSet(exerciseId) {
-    const exercise = appState.workout.exercises.find(function (item) {
-      return item.exerciseId === exerciseId;
-    });
+    const exercise = findExercise(exerciseId);
     if (!exercise) {
       return;
     }
@@ -339,9 +300,7 @@ import {
   }
 
   function removeSet(exerciseId, setId) {
-    const exercise = appState.workout.exercises.find(function (item) {
-      return item.exerciseId === exerciseId;
-    });
+    const exercise = findExercise(exerciseId);
     if (!exercise) {
       return;
     }
@@ -379,9 +338,7 @@ import {
   }
 
   function updateExerciseSelectionMuscle(exerciseId, muscle) {
-    const exercise = appState.workout.exercises.find(function (item) {
-      return item.exerciseId === exerciseId;
-    });
+    const exercise = findExercise(exerciseId);
     if (!exercise) {
       return;
     }
@@ -391,9 +348,7 @@ import {
   }
 
   function chooseExerciseCatalog(exerciseId, catalogId) {
-    const exercise = appState.workout.exercises.find(function (item) {
-      return item.exerciseId === exerciseId;
-    });
+    const exercise = findExercise(exerciseId);
     if (!exercise) {
       return;
     }
@@ -405,9 +360,7 @@ import {
   }
 
   function startCustomExercise(exerciseId) {
-    const exercise = appState.workout.exercises.find(function (item) {
-      return item.exerciseId === exerciseId;
-    });
+    const exercise = findExercise(exerciseId);
     if (!exercise) {
       return;
     }
@@ -416,27 +369,6 @@ import {
     exercise.primaryMuscle = exercise.selectionMuscle || exercise.primaryMuscle || "";
     exercise.name = "";
     appState.ui.expandedExerciseId = exerciseId;
-    touchWorkout();
-    renderInput();
-    renderPreview();
-  }
-
-  function resetExerciseChoice(exerciseId) {
-    const exercise = appState.workout.exercises.find(function (item) {
-      return item.exerciseId === exerciseId;
-    });
-    if (!exercise) {
-      return;
-    }
-    exercise.catalogId = "";
-    exercise.isCustom = false;
-    exercise.primaryMuscle = "";
-    exercise.selectionMuscle = "";
-    exercise.name = "";
-    exercise.memo = "";
-    exercise.sets = [createEmptySet()];
-    appState.ui.expandedExerciseId = exerciseId;
-    delete appState.ui.memoOpenExerciseIds[exerciseId];
     touchWorkout();
     renderInput();
     renderPreview();
@@ -452,10 +384,6 @@ import {
     appState.ui.memoOpenExerciseIds[exerciseId] = !isExerciseMemoOpen(exerciseId);
     appState.ui.expandedExerciseId = exerciseId;
     renderInput();
-  }
-
-  function calculateWorkout(workout) {
-    return calculateWorkoutMetrics(workout);
   }
 
   function buildWorkoutFlexMessage(workout) {
@@ -476,9 +404,7 @@ import {
     }
 
     calculatedWorkout.exercises.forEach(function (exercise, index) {
-      const hasValidSet = (exercise.sets || []).some(function (set) {
-        return isValidSetInput(toNullableNumber(set.weight), toNullableNumber(set.reps));
-      });
+      const hasValidSet = (exercise.sets || []).some(isFilledSet);
       if (hasValidSet && !(exercise.name || "").trim()) {
         errors.push("種目" + (index + 1) + "の名前を入力してください。");
       }
@@ -879,13 +805,6 @@ import {
       case "change-ranking-period":
         changeRankingPeriod(button.getAttribute("data-period"));
         break;
-      case "change-muscle-filter":
-        appState.ui.catalogFilter = button.getAttribute("data-muscle") || "all";
-        renderInput();
-        break;
-      case "add-quick-exercise":
-        addExercise(button.getAttribute("data-catalog-id"));
-        break;
       case "insert-exercise-after":
         insertExerciseAfter(
           button.getAttribute("data-after-exercise-id"),
@@ -906,9 +825,6 @@ import {
         break;
       case "start-custom-exercise":
         startCustomExercise(button.getAttribute("data-exercise-id"));
-        break;
-      case "change-exercise-choice":
-        resetExerciseChoice(button.getAttribute("data-exercise-id"));
         break;
       case "toggle-exercise-panel":
         toggleExercisePanel(button.getAttribute("data-exercise-id"));
@@ -966,9 +882,7 @@ import {
     if (target.hasAttribute("data-exercise-field")) {
       const exerciseId = target.getAttribute("data-exercise-id");
       const field = target.getAttribute("data-exercise-field");
-      const exercise = appState.workout.exercises.find(function (item) {
-        return item.exerciseId === exerciseId;
-      });
+      const exercise = findExercise(exerciseId);
       if (!exercise) {
         return;
       }
@@ -978,33 +892,12 @@ import {
       return;
     }
 
-    if (target.hasAttribute("data-exercise-select")) {
-      const exerciseId = target.getAttribute("data-exercise-id");
-      const exercise = appState.workout.exercises.find(function (item) {
-        return item.exerciseId === exerciseId;
-      });
-      if (!exercise) {
-        return;
-      }
-      if (target.value) {
-        applyCatalogToExercise(exercise, target.value);
-      } else {
-        exercise.catalogId = "";
-        exercise.primaryMuscle = "";
-      }
-      touchWorkout();
-      renderInput();
-      renderPreview();
-      return;
-    }
 
     if (target.hasAttribute("data-set-field")) {
       const exerciseId = target.getAttribute("data-exercise-id");
       const setId = target.getAttribute("data-set-id");
       const field = target.getAttribute("data-set-field");
-      const exercise = appState.workout.exercises.find(function (item) {
-        return item.exerciseId === exerciseId;
-      });
+      const exercise = findExercise(exerciseId);
       if (!exercise) {
         return;
       }
@@ -1040,9 +933,6 @@ import {
       elements.tabRankingButton.hidden = !isRankingEnabled();
       elements.tabRankingButton.style.display = isRankingEnabled() ? "" : "none";
     }
-    if (elements.tabNav) {
-      elements.tabNav.classList.toggle("has-ranking", isRankingEnabled());
-    }
     if (elements.actionBar) {
       elements.actionBar.classList.toggle("has-debug-actions", isDebugModeEnabled());
     }
@@ -1063,14 +953,10 @@ import {
       return;
     }
 
-    const previewCount = countNamedExercises(appState.workout);
-
     elements.tabButtons.forEach(function (button) {
       const tab = button.getAttribute("data-tab");
       if (tab === "input") {
         button.innerHTML = renderTabButtonLabel("入力", "");
-      } else if (tab === "preview") {
-        button.innerHTML = renderTabButtonLabel("プレビュー", String(previewCount) + "件");
       } else if (tab === "history") {
         button.innerHTML = renderTabButtonLabel("履歴", String(appState.history.length) + "件");
       } else if (tab === "ranking") {
@@ -1297,14 +1183,6 @@ import {
     return context.groupId || context.roomId || APP_CONFIG.DEFAULT_GROUP_KEY || null;
   }
 
-  function safelyGetLiffContext() {
-    return readLiffContext();
-  }
-
-  function isLiffShareAvailable() {
-    return checkLiffShareAvailable(appState.liff.ready);
-  }
-
   function touchWorkout(renewWorkoutId) {
     // 日付は手入力させず、記録を入力した日をそのまま使う
     appState.workout.date = getTodayLocalDate();
@@ -1316,20 +1194,8 @@ import {
     appState.ui.openJsonPreview = false;
   }
 
-  function hydrateWorkout(workout) {
-    return hydrateWorkoutModel(workout);
-  }
-
   function sanitizeWorkout(workout) {
     return sanitizeWorkoutModel(workout, resolveGroupKey);
-  }
-
-  function getDefaultWorkoutTitle(user) {
-    return buildDefaultWorkoutTitle(user);
-  }
-
-  function resolveWorkoutTitle(title, user) {
-    return resolveWorkoutTitleText(title, user);
   }
 
   function renderExerciseCard(exercise, exerciseIndex) {
@@ -1461,10 +1327,8 @@ import {
   // 1セット分の行。スマホで押しやすいよう2段にし、kg・回数は −／＋ でも変えられる
   //   上段: 何セット目・推定RM・削除  下段: kg と回数
   function renderSetRow(exerciseId, set, setIndex) {
-    const hasValidSet = isValidSetInput(toNullableNumber(set.weight), toNullableNumber(set.reps));
-    const exercise = appState.workout.exercises.find(function (item) {
-      return item.exerciseId === exerciseId;
-    });
+    const hasValidSet = isFilledSet(set);
+    const exercise = findExercise(exerciseId);
     const canRemoveSet = exercise ? exercise.sets.length > 1 : false;
     const isMaxRmSet =
       Boolean(exercise && exercise.maxEstimated1rm) &&
@@ -1483,7 +1347,7 @@ import {
         '><small class="metric-label">推定RM</small><strong class="metric-value" data-set-summary="estimated1rm" ' +
         ids +
         ">" +
-        escapeHtml(hasValidSet ? formatMetric(set.estimated1rm || 0, "kg", 1) : "-") +
+        escapeHtml(hasValidSet ? formatLocaleMetric(set.estimated1rm || 0, "kg", 1) : "-") +
         "</strong></div>",
       renderActionButton({
         label: "削除",
@@ -1565,9 +1429,7 @@ import {
   }
 
   function syncRenderedSetSummary(exerciseId) {
-    const exercise = appState.workout.exercises.find(function (item) {
-      return item.exerciseId === exerciseId;
-    });
+    const exercise = findExercise(exerciseId);
     if (!exercise) {
       return;
     }
@@ -1592,8 +1454,8 @@ import {
         return;
       }
 
-      const hasValidSet = isValidSetInput(toNullableNumber(set.weight), toNullableNumber(set.reps));
-      summaryNode.textContent = hasValidSet ? formatMetric(set.estimated1rm || 0, "kg", 1) : "-";
+      const hasValidSet = isFilledSet(set);
+      summaryNode.textContent = hasValidSet ? formatLocaleMetric(set.estimated1rm || 0, "kg", 1) : "-";
       metaNode.classList.toggle(
         "is-max-rm",
         Boolean(maxRm) && hasValidSet && roundNumber(set.estimated1rm || 0, 1) === maxRm
@@ -1737,10 +1599,6 @@ import {
     return (exercises || []).find(function (exercise) {
       return exercise.exerciseId === appState.ui.expandedExerciseId;
     });
-  }
-
-  function countNamedExercises(workout) {
-    return countNamedExercisesValue(workout);
   }
 
   function renderHistoryCard(workout) {
@@ -1899,7 +1757,7 @@ import {
         })
         .join(""),
       '  <div class="preview-bubble-footer">' +
-      escapeHtml("Powered by " + (APP_CONFIG.APP_NAME || "Workout Share")) +
+      escapeHtml("Created by " + (APP_CONFIG.APP_NAME || "きろく") + " ›") +
       "</div>",
       "</section>"
     ].join("");
@@ -1924,7 +1782,7 @@ import {
               '<div class="ranking-meta">' +
               escapeHtml(row.label || "") +
               "</div></div>",
-              '  <strong>' + escapeHtml(formatMetric(row.value, unit, 1)) + "</strong>",
+              '  <strong>' + escapeHtml(formatLocaleMetric(row.value, unit, 1)) + "</strong>",
               "</div>"
             ].join("");
           })
@@ -1936,9 +1794,7 @@ import {
   }
 
   function renderExerciseStatCard(exercise) {
-    const validSetCount = (exercise.sets || []).filter(function (set) {
-      return isValidSetInput(toNullableNumber(set.weight), toNullableNumber(set.reps));
-    }).length;
+    const validSetCount = countValidSets(exercise);
     const caption = [String(validSetCount) + "セット"];
 
     if (exercise.primaryMuscle) {
@@ -1952,21 +1808,24 @@ import {
       '    <span class="summary-inline-meta">' + escapeHtml(caption.join(" / ")) + "</span>",
       "  </div>",
       '  <strong class="summary-value summary-value-inline">' +
-        escapeHtml(formatMetric(exercise.maxEstimated1rm || 0, "kg", 1)) +
+        escapeHtml(formatLocaleMetric(exercise.maxEstimated1rm || 0, "kg", 1)) +
         "</strong>",
       "</article>"
     ].join("");
   }
 
-  // 開閉できるところ（送信プレビュー・集計・種目・履歴）は、すべてこの ▾ ボタンでそろえる（文字は読み上げ用）
-  function renderDisclosureToggle(options) {
-    const isOpen = Boolean(options.isOpen);
-    const attrs = Object.assign({}, options.attrs || {});
-    const attributeText = Object.keys(attrs)
+  function renderAttributes(attrs) {
+    return Object.keys(attrs || {})
       .map(function (key) {
         return " " + key + '="' + escapeHtml(String(attrs[key])) + '"';
       })
       .join("");
+  }
+
+  // 開閉できるところ（送信プレビュー・集計・種目・履歴）は、すべてこの ▾ ボタンでそろえる（文字は読み上げ用）
+  function renderDisclosureToggle(options) {
+    const isOpen = Boolean(options.isOpen);
+    const attributeText = renderAttributes(options.attrs);
     return (
       '<button class="disclosure-toggle' +
       (isOpen ? " is-open" : "") +
@@ -1986,12 +1845,7 @@ import {
   }
 
   function renderActionButton(options) {
-    const attrs = Object.assign({}, options.attrs || {});
-    const attributeText = Object.keys(attrs)
-      .map(function (key) {
-        return " " + key + '="' + escapeHtml(String(attrs[key])) + '"';
-      })
-      .join("");
+    const attributeText = renderAttributes(options.attrs);
     const isDisabled = Boolean(options.disabled);
 
     return (
@@ -2016,13 +1870,6 @@ import {
         : "") +
       "</button>"
     );
-  }
-
-  function cssEscape(value) {
-    if (window.CSS && typeof window.CSS.escape === "function") {
-      return window.CSS.escape(String(value));
-    }
-    return String(value).replace(/["\\]/g, "\\$&");
   }
 
   function renderExercisePicker(exercise) {
@@ -2087,7 +1934,7 @@ import {
         ? '    <div class="between-exercise-action"><button class="outline-button between-exercise-button" data-action="start-custom-exercise" data-exercise-id="' +
         escapeHtml(exercise.exerciseId) +
         '" type="button">' +
-        escapeHtml(exercise.selectionMuscle === "その他" ? "＋自由入力" : "＋自由入力") +
+        "＋自由入力" +
         "</button></div>"
         : "",
       "  </div>",
@@ -2114,16 +1961,14 @@ import {
   }
 
   function renderExerciseSummary(exercise) {
-    const validSetCount = (exercise.sets || []).filter(function (set) {
-      return isValidSetInput(toNullableNumber(set.weight), toNullableNumber(set.reps));
-    }).length;
+    const validSetCount = countValidSets(exercise);
     const summaryParts = [];
 
     if (validSetCount > 0) {
       summaryParts.push(validSetCount + "セット");
     }
     if (exercise.maxEstimated1rm > 0) {
-      summaryParts.push("RM " + formatMetric(exercise.maxEstimated1rm, "kg", 1));
+      summaryParts.push("RM " + formatLocaleMetric(exercise.maxEstimated1rm, "kg", 1));
     }
 
     return summaryParts.join(" / ");
@@ -2206,9 +2051,7 @@ import {
       updatedAt: timestamp
     });
 
-    renderInput();
-    renderPreview();
-    renderShell();
+    renderWorkoutViews();
     setStatus("サンプル入力を反映しました。", "info");
   }
 
@@ -2219,9 +2062,7 @@ import {
     }
     appState.workout = createEmptyWorkout();
     syncWorkoutUser();
-    renderInput();
-    renderPreview();
-    renderShell();
+    renderWorkoutViews();
     setStatus("入力内容をリセットしました。", "info");
   }
 
@@ -2310,59 +2151,4 @@ import {
     };
   }
 
-  function isValidSetInput(weight, reps) {
-    return Number.isFinite(weight) && weight > 0 && Number.isFinite(reps) && reps > 0;
-  }
-
-  function toNullableNumber(value) {
-    if (value === "" || value === null || typeof value === "undefined") {
-      return null;
-    }
-    const number = Number(value);
-    return Number.isFinite(number) ? number : null;
-  }
-
-  function formatMetric(value, unit, digits) {
-    const normalized = Number(value || 0);
-    const fractionDigits = typeof digits === "number" ? digits : 0;
-    return normalized.toLocaleString("ja-JP", {
-      minimumFractionDigits: fractionDigits,
-      maximumFractionDigits: fractionDigits
-    }) + (unit ? " " + unit : "");
-  }
-
-  function roundNumber(value, digits) {
-    const factor = Math.pow(10, digits || 0);
-    return Math.round(Number(value || 0) * factor) / factor;
-  }
-
-  function generateId(prefix) {
-    return (prefix || "id") + "-" + Math.random().toString(36).slice(2, 10);
-  }
-
-  function getTodayLocalDate() {
-    const date = new Date();
-    const tzOffset = date.getTimezoneOffset() * 60000;
-    return new Date(date.getTime() - tzOffset).toISOString().slice(0, 10);
-  }
-
-  function deepClone(value) {
-    return JSON.parse(JSON.stringify(value));
-  }
-
-  function truncateText(text, maxLength) {
-    if (!text || text.length <= maxLength) {
-      return text;
-    }
-    return text.slice(0, maxLength - 1) + "…";
-  }
-
-  function escapeHtml(value) {
-    return String(value)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-  }
 })();
