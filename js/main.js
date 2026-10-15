@@ -1623,7 +1623,7 @@ import {
 
   function openMenuModal() {
     appState.menus = MenuRepository.loadAll();
-    // 名前の初期値はワークアウトのタイトル（自動で入る「きろく」などはメニュー名にしない）
+    // 名前の初期値はワークアウトのタイトル（自動で入る「キロっく」などはメニュー名にしない）
     const title = (appState.workout.title || "").trim();
     appState.ui.menuName = title && title !== getDefaultWorkoutTitle(appState.workout.user) ? title : "";
     appState.ui.menuModalOpen = true;

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""きろく（kiloQ）の OGP 画像（ogp.png、1200x630）を作る。リンクを共有したときの画像に使う。
+"""キロっく（kiloQ）の OGP 画像（ogp.png、1200x630）を作る。リンクを共有したときの画像に使う。
 
-きろくのオレンジにうっすらノートの罫線を引き、
-左にアイコン（tools/icon.py と同じ形）、右に名前「きろく」・英字「kiloQ」・説明。
+キロっくのオレンジにうっすらノートの罫線を引き、
+左にアイコン（tools/icon.py と同じ形）、右に名前「キロっく」・英字「kiloQ」・説明。
 macOS のヒラギノ角ゴシック・Jua（~/Library/Fonts/Jua.ttf）・Pillow が必要。
 
 使い方: python3 tools/ogp.py
@@ -53,7 +53,7 @@ def main():
     # 右：名前・英字・説明
     d = ImageDraw.Draw(img)
     x = 490 * S
-    d.text((x, 250 * S), "きろく", font=hira(8, 110), fill=(255, 255, 255), anchor="ls")
+    d.text((x, 250 * S), "キロっく", font=hira(8, 110), fill=(255, 255, 255), anchor="ls")
     jua = ImageFont.truetype(str(FONT_PATH), 46 * S)
     cx = x
     for ch in "kiloQ":  # 字の間を少しあける

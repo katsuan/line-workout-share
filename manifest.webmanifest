@@ -1,6 +1,6 @@
 {
-  "name": "きろく",
-  "short_name": "きろく",
+  "name": "キロっく",
+  "short_name": "キロっく",
   "description": "筋トレの種目・重さ・回数を記録して、LINE にカードで送れるツール（kiloQ）",
   "lang": "ja",
   "start_url": "./",

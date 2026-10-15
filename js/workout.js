@@ -168,9 +168,9 @@ export function sanitizeWorkout(workout, resolveGroupKey) {
 export function getDefaultWorkoutTitle(user) {
   const displayName = user ? String(user.displayName || "").trim() : "";
   if (displayName && displayName.toLowerCase() !== "anonymous") {
-    return displayName + "のきろく";
+    return displayName + "のキロっく";
   }
-  return "きろく";
+  return "キロっく";
 }
 
 export function resolveWorkoutTitle(title, user) {

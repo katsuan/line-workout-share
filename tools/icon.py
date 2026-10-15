@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""きろく（kiloQ）のアイコンを作る。英字の「kilo」は重さの kg のキロ（きろく＝kilo＋Q。kilo は小文字、Q だけ大文字）。
+"""キロっく（kiloQ）のアイコンを作る。英字の「kilo」は重さの kg のキロ（キロっく＝kilo＋Q。kilo は小文字、Q だけ大文字）。
 
-おくるん（OQRN）・さくせん盤（SAQSEN）のアイコンと同じ角の丸い四角に、きろくのオレンジのグラデーション
+おくるん（OQRN）・さくせん盤（SAQSEN）のアイコンと同じ角の丸い四角に、キロっくのオレンジのグラデーション
 （js/constants.js の DEFAULT_THEME.baseColor #C96A2D が濃いほう）。
 中は、白いウエイトのプレート（太い輪＋面の溝＋まん中の穴）と、輪の右下（45°）のふちに斜めに置いた小さなダンベル。
 プレート（輪）＋ダンベル（しっぽ）で Q に見せる（バーを1本出すだけだと虫めがねに見えるので、ダンベルにする）（kiloQ の Q）。後ろにうっすらノートの罫線（記録）。
@@ -217,7 +217,7 @@ def logo_svg():
     inset = h * 0.22
     rules = "".join(f'<path d="M{num(x0 + inset)} {num(y)}H{num(x0 + width - inset)}" {rule}/>' for y in (-h * 0.2, h * 1.2))
     return (
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{num(x0)} {num(y0)} {num(width)} {num(height)}" role="img" aria-label="kiloQ（きろく）">'
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{num(x0)} {num(y0)} {num(width)} {num(height)}" role="img" aria-label="kiloQ（キロっく）">'
         f'<defs><linearGradient id="g" gradientUnits="userSpaceOnUse" x1="{num(x0)}" y1="{num(y0)}" x2="{num(x0 + width)}" y2="{num(y0 + height)}">'
         f'<stop offset="0" stop-color="{hex_(ORANGE_LIGHT)}"/><stop offset="1" stop-color="{hex_(ORANGE_DARK)}"/></linearGradient></defs>'
         f'<rect x="{num(x0)}" y="{num(y0)}" width="{num(width)}" height="{num(height)}" rx="{num(h * 0.3)}" fill="url(#g)"/>'

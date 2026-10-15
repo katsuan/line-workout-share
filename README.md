@@ -1,10 +1,10 @@
-# 🏋️ きろく（kiloQ）
+# 🏋️ キロっく（kiloQ）
 
-筋トレの記録ツール。名前は「きろく」（英字は kiloQ。おくるん＝OQRN・さくせん盤＝SAQSEN と同じ作り方で、「く」を Q にする。「きろ」は重さの kg のキロに掛けて kilo と書く。kilo は小文字、Q だけ大文字）。ふだん見せるのはひらがなの「きろく」、英字は見出しの右のロゴに使う。送るカードの末尾は「Created by kiloQ ›」（おくるんの「Created by おくるん ›」と同じ形。タップでこのツールが開く）。
+筋トレの記録ツール。名前は「キロっく」（英字は kiloQ。おくるん＝OQRN・さくせん盤＝SAQSEN と同じ作り方で、「キロ」は重さの kg のキロ（kilo）、「っく」を Q にする。kilo は小文字、Q だけ大文字）。ふだん見せるのはカタカナ混じりの「キロっく」、英字は見出しの右のロゴに使う。送るカードの末尾は「Created by kiloQ ›」（おくるんの「Created by おくるん ›」と同じ形。タップでこのツールが開く）。
 
-アイコン（`icon.svg`・`apple-touch-icon.png`・`icon-512.png`・`icon-maskable-512.png`・`icon-32.png`）と横長のロゴ（`logo.svg`）は `python3 tools/icon.py` で作る：おくるんと同じ角の丸い四角に、きろくのオレンジ（`DEFAULT_THEME.baseColor` の #C96A2D）。白いウエイトのプレート（太い輪＋面の溝＋まん中の穴）の右下のふちに、小さなダンベルを斜めに重ね、プレート（輪）＋ダンベル（しっぽ）で Q に見せる（kiloQ の Q）。後ろにうっすらノートの罫線（記録）。ロゴは k・i・l・o をフォント（Jua）で並べ、Q だけアイコンと同じプレート＋ダンベル。共有したときの画像（`ogp.png`、1200×630）は `python3 tools/ogp.py` で作る。ホーム画面に追加したとき用に `manifest.webmanifest`。
+アイコン（`icon.svg`・`apple-touch-icon.png`・`icon-512.png`・`icon-maskable-512.png`・`icon-32.png`）と横長のロゴ（`logo.svg`）は `python3 tools/icon.py` で作る：おくるんと同じ角の丸い四角に、キロっくのオレンジ（`DEFAULT_THEME.baseColor` の #C96A2D）。白いウエイトのプレート（太い輪＋面の溝＋まん中の穴）の右下のふちに、小さなダンベルを斜めに重ね、プレート（輪）＋ダンベル（しっぽ）で Q に見せる（kiloQ の Q）。後ろにうっすらノートの罫線（記録）。ロゴは k・i・l・o をフォント（Jua）で並べ、Q だけアイコンと同じプレート＋ダンベル。共有したときの画像（`ogp.png`、1200×630）は `python3 tools/ogp.py` で作る。ホーム画面に追加したとき用に `manifest.webmanifest`。
 
-おくるんのトップの「ほかのツール」（line-share の `data/hub-links.json`）には、このアイコン（`appIcon`）付きで「きろく」として載せている。
+おくるんのトップの「ほかのツール」（line-share の `data/hub-links.json`）には、このアイコン（`appIcon`）付きで「キロっく」として載せている。
 
 公開URL: https://katsuan.github.io/line-workout-share/
 
@@ -177,7 +177,7 @@ GitHub Pages で配信する、静的なワークアウト共有アプリです�
 - `estimated1rm = weight + (weight * reps) / 40`
 - 空セット、重量未入力、回数未入力は共有対象外
 - `volume` は内部計算には残すが、現在の送信表示では使わない
-- タイトル未入力時は `displayName のきろく` または `きろく` を自動補完
+- タイトル未入力時は `displayName のキロっく` または `キロっく` を自動補完
 
 ## 現在の UI 方針
 
