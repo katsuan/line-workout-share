@@ -797,14 +797,64 @@ button:disabled {
 
 .input-page-head .panel-title {
   flex: 1;
+  min-width: 0;
   margin: 0;
 }
 
-.start-from-history {
-  min-height: 36px;
-  padding: 0 14px;
-  font-size: 0.85rem;
+/* 始め方（メニュー・履歴から）：見出しの下に等幅で並べる。狭い画面でも文字は1行で省略する */
+.input-start-row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.input-start-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 52px;
+  padding: 8px 12px;
+  border: 1px solid var(--primary-outline);
+  border-radius: 16px;
+  background: var(--primary-surface);
+  color: var(--text);
+  text-align: left;
+}
+
+.input-start-button:active {
+  background: var(--primary-soft);
+}
+
+.input-start-icon {
+  flex: 0 0 auto;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.input-start-copy {
+  display: grid;
+  min-width: 0;
+}
+
+.input-start-label,
+.input-start-sub {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.input-start-label {
+  color: var(--primary-dark);
+  font-size: 0.92rem;
   font-weight: 700;
+}
+
+.input-start-sub {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
 }
 
 .workout-meta-card {

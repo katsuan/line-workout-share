@@ -545,28 +545,15 @@ import {
       appState.ui.expandedExerciseId = getDefaultExpandedExerciseId(workout.exercises);
     }
     // 並びは「記録の前提 → 主な作業 → 補助的な操作」
-    //   1. 見出し（履歴があれば「履歴から始める」）  2. ワークアウトタイトル（日付は入力した日を自動で使う）
-    //   3. 種目とセット                              4. サンプル・リセット
+    //   1. 見出し（アイコン＋「記録入力」だけ）  2. 始め方（メニュー・履歴から入れる）
+    //   3. ワークアウトタイトル（日付は入力した日を自動で使う）  4. 種目とセット  5. サンプル・リセット
     const html = [
       '<div class="input-stack">',
-      '  <div class="input-head-row input-page-head">',
+      '  <div class="input-page-head">',
       renderSettingsTrigger(),
       '    <h2 class="panel-title">記録入力</h2>',
-      // 「よくやるメニュー」から始める（保存したメニューとおすすめ）。保存もこのシートから
-      renderActionButton({
-        label: "📋 メニュー",
-        title: "トレーニングメニュー",
-        variant: "pill-button start-from-history",
-        action: "open-menu-modal"
-      }),
-      appState.history.length
-        ? renderActionButton({
-          label: "履歴から始める",
-          variant: "pill-button start-from-history",
-          action: "open-history-input"
-        })
-        : "",
       "  </div>",
+      renderInputStartActions(),
       renderSettingsModal(),
       renderMenuModal(),
       '  <section class="panel-card input-card workout-meta-card" aria-label="ワークアウトタイトル">',
@@ -1536,6 +1523,35 @@ import {
         : "",
       "</section>"
     ].join("");
+  }
+
+  // 始め方：保存したメニュー（とおすすめ）か、履歴から入れる。スマホでも詰まらないよう見出しとは別の行に、等幅で並べる
+  // （履歴がなければメニューだけを1列で）
+  function renderInputStartActions() {
+    const buttons = [
+      renderStartButton({ icon: "📋", label: "メニュー", sub: "保存・呼び出し", action: "open-menu-modal" })
+    ];
+    if (appState.history.length) {
+      buttons.push(renderStartButton({ icon: "🕘", label: "履歴から", sub: "前の記録を使う", action: "open-history-input" }));
+    }
+    return '<div class="input-start-row" role="group" aria-label="入力の始め方">' + buttons.join("") + "</div>";
+  }
+
+  function renderStartButton(options) {
+    return (
+      '<button class="input-start-button" data-action="' +
+      escapeHtml(options.action) +
+      '" type="button">' +
+      '<span class="input-start-icon" aria-hidden="true">' +
+      escapeHtml(options.icon) +
+      "</span>" +
+      '<span class="input-start-copy"><span class="input-start-label">' +
+      escapeHtml(options.label) +
+      '</span><span class="input-start-sub">' +
+      escapeHtml(options.sub) +
+      "</span></span>" +
+      "</button>"
+    );
   }
 
   function renderInputUtilityActions() {

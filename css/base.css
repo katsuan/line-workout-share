@@ -79,13 +79,6 @@ button {
   font-weight: 650;
 }
 
-.input-head-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-}
-
 .user-avatar-button {
   display: inline-flex;
   align-items: center;
