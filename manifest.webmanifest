@@ -1,7 +1,7 @@
 {
   "name": "きろく",
   "short_name": "きろく",
-  "description": "筋トレの種目・重さ・回数を記録して、LINE にカードで送れるツール（KIROQ）",
+  "description": "筋トレの種目・重さ・回数を記録して、LINE にカードで送れるツール（KILOQ）",
   "lang": "ja",
   "start_url": "./",
   "scope": "./",

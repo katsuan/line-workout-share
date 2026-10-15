@@ -1,8 +1,8 @@
-# 🏋️ きろく（KIROQ）
+# 🏋️ きろく（KILOQ）
 
-筋トレの記録ツール。名前は「きろく」（英字は KIROQ。おくるん＝OQRN・さくせん盤＝SAQSEN と同じ作り方で、「く」を Q にする）。ふだん見せるのはひらがなの「きろく」、英字は見出しの右のロゴに使う。送るカードの末尾は「Created by きろく ›」（おくるんの「Created by おくるん ›」にそろえる。タップでこのツールが開く）。
+筋トレの記録ツール。名前は「きろく」（英字は KILOQ。おくるん＝OQRN・さくせん盤＝SAQSEN と同じ作り方で、「く」を Q にする。「きろ」は重さの kg のキロに掛けて KILO と書く）。ふだん見せるのはひらがなの「きろく」、英字は見出しの右のロゴに使う。送るカードの末尾は「Created by きろく ›」（おくるんの「Created by おくるん ›」にそろえる。タップでこのツールが開く）。
 
-アイコン（`icon.svg`・`apple-touch-icon.png`・`icon-512.png`・`icon-maskable-512.png`・`icon-32.png`）と横長のロゴ（`logo.svg`）は `python3 tools/icon.py` で作る：おくるんと同じ角の丸い四角に、きろくのオレンジ（`DEFAULT_THEME.baseColor` の #C96A2D）。白いウエイトのプレート（太い輪＋面の溝＋まん中の穴）の右下のふちに、小さなダンベルを斜めに重ね、プレート（輪）＋ダンベル（しっぽ）で Q に見せる（KIROQ の Q）。後ろにうっすらノートの罫線（記録）。ロゴは K・I・R・O をフォント（Jua）で並べ、Q だけアイコンと同じプレート＋ダンベル。共有したときの画像（`ogp.png`、1200×630）は `python3 tools/ogp.py` で作る。ホーム画面に追加したとき用に `manifest.webmanifest`。
+アイコン（`icon.svg`・`apple-touch-icon.png`・`icon-512.png`・`icon-maskable-512.png`・`icon-32.png`）と横長のロゴ（`logo.svg`）は `python3 tools/icon.py` で作る：おくるんと同じ角の丸い四角に、きろくのオレンジ（`DEFAULT_THEME.baseColor` の #C96A2D）。白いウエイトのプレート（太い輪＋面の溝＋まん中の穴）の右下のふちに、小さなダンベルを斜めに重ね、プレート（輪）＋ダンベル（しっぽ）で Q に見せる（KILOQ の Q）。後ろにうっすらノートの罫線（記録）。ロゴは K・I・L・O をフォント（Jua）で並べ、Q だけアイコンと同じプレート＋ダンベル。共有したときの画像（`ogp.png`、1200×630）は `python3 tools/ogp.py` で作る。ホーム画面に追加したとき用に `manifest.webmanifest`。
 
 おくるんのトップの「ほかのツール」（line-share の `data/hub-links.json`）には、このアイコン（`appIcon`）付きで「きろく」として載せている。
 
