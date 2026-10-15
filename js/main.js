@@ -28,9 +28,12 @@ import {
   createEmptyWorkout,
   createWorkoutFromMenu,
   expandMenuPreset,
+  getCreditText,
   getDefaultWorkoutTitle,
+  getNamedExercises,
   hydrateWorkout,
   isFilledSet,
+  isMaxRmSet,
   resolveWorkoutTitle,
   sanitizeWorkout as sanitizeWorkoutModel,
   summarizeMenu
@@ -40,14 +43,15 @@ import {
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
 } from "./repositories.js";
+import { cssEscape, escapeHtml, formatLocaleMetric, generateId, getTodayLocalDate } from "./utils.js";
 import {
-  cssEscape,
-  escapeHtml,
-  formatLocaleMetric,
-  generateId,
-  getTodayLocalDate,
-  roundNumber
-} from "./utils.js";
+  fieldTemplate,
+  renderActionButton,
+  renderDisclosureToggle,
+  renderModal,
+  renderStartButton
+} from "./components.js";
+import { buildSampleWorkout, mockRanking } from "./fixtures.js";
 
 (function () {
 
@@ -90,6 +94,10 @@ import {
   let statusTimerId = 0;
 
   const elements = {};
+
+  const LocalStorageWorkoutRepository = createLocalStorageWorkoutRepository(hydrateWorkout);
+  const ApiWorkoutRepository = createApiWorkoutRepository(resolveGroupKey, mockRanking);
+  const MenuRepository = createLocalStorageMenuRepository();
 
   document.addEventListener("DOMContentLoaded", initApp);
 
@@ -445,24 +453,31 @@ import {
     return LocalStorageWorkoutRepository.loadAll();
   }
 
+  // 入力中の内容を別のもの（履歴・メニュー・サンプル・空）に入れ替える。最初の種目を開いて入力タブへ
+  function replaceWorkout(workout, message) {
+    appState.workout = workout;
+    syncWorkoutUser();
+    appState.ui.expandedExerciseId = workout.exercises[0] ? workout.exercises[0].exerciseId : "";
+    appState.activeTab = "input";
+    renderWorkoutViews();
+    setStatus(message, "info");
+  }
+
+  // 種目を入力しているときだけ、置き換えてよいか確かめる
+  function confirmReplaceInput(question) {
+    return countNamedExercises(appState.workout) === 0 || window.confirm(question);
+  }
+
   function restoreWorkout(workoutId) {
     const restored = LocalStorageWorkoutRepository.findById(workoutId);
     if (!restored) {
       setStatus("選択した履歴が見つかりませんでした。", "warn");
       return;
     }
-
-    appState.workout = hydrateWorkout(restored);
-    appState.workout.date = getTodayLocalDate();
-    syncWorkoutUser();
-    appState.ui.expandedExerciseId = appState.workout.exercises[0]
-      ? appState.workout.exercises[0].exerciseId
-      : "";
-    appState.activeTab = "input";
-    renderShell();
-    renderInput();
-    renderPreview();
-    setStatus("履歴を入力フォームへ戻しました。", "info");
+    if (!confirmReplaceInput("今の入力内容を、この履歴で置き換えますか？")) {
+      return;
+    }
+    replaceWorkout(hydrateWorkout(restored), "履歴を入力フォームへ戻しました。");
   }
 
   async function shareWorkout(workout) {
@@ -717,14 +732,6 @@ import {
     };
   }
 
-  const LocalStorageWorkoutRepository = {
-    ...createLocalStorageWorkoutRepository(hydrateWorkout)
-  };
-
-  const ApiWorkoutRepository = createApiWorkoutRepository(resolveGroupKey, mockRanking);
-
-  const MenuRepository = createLocalStorageMenuRepository();
-
   function handleClick(event) {
     const button = event.target.closest("button");
     if (!button) {
@@ -754,126 +761,110 @@ import {
       return;
     }
 
-    const action = button.getAttribute("data-action");
-    if (!action) {
-      return;
-    }
-
-    switch (action) {
-      case "close-status":
-        clearStatus();
-        break;
-      case "step-set":
-        stepSetValue(button);
-        break;
-      case "toggle-metrics":
-        appState.ui.metricsOpen = !appState.ui.metricsOpen;
-        renderPreview();
-        break;
-      case "toggle-preview":
-        appState.ui.previewOpen = !appState.ui.previewOpen;
-        savePreviewOpen(appState.ui.previewOpen);
-        renderPreview();
-        break;
-      case "jump-to-current-exercise":
-        scrollToExerciseCard(button.getAttribute("data-exercise-id"));
-        break;
-      case "open-history-input":
-        setActiveTab("history");
-        break;
-      case "open-menu-modal":
-        openMenuModal();
-        break;
-      case "close-menu-modal":
-        appState.ui.menuModalOpen = false;
-        renderInput();
-        break;
-      case "save-menu":
-        saveCurrentAsMenu();
-        break;
-      case "apply-menu":
-        applyMenu(button.getAttribute("data-menu-id"));
-        break;
-      case "delete-menu":
-        deleteMenu(button.getAttribute("data-menu-id"));
-        break;
-      case "sample-workout":
-        applySampleWorkout();
-        break;
-      case "reset-workout":
-        resetWorkout();
-        break;
-      case "remove-exercise":
-        removeExercise(button.getAttribute("data-exercise-id"));
-        break;
-      case "add-set":
-        addSet(button.getAttribute("data-exercise-id"));
-        break;
-      case "remove-set":
-        removeSet(button.getAttribute("data-exercise-id"), button.getAttribute("data-set-id"));
-        break;
-      case "restore-history":
-        if (
-          countNamedExercises(appState.workout) > 0 &&
-          !window.confirm("今の入力内容を、この履歴で置き換えますか？")
-        ) {
-          break;
-        }
-        restoreWorkout(button.getAttribute("data-workout-id"));
-        break;
-      case "delete-history":
-        deleteHistory(button.getAttribute("data-workout-id"));
-        break;
-      case "toggle-history-card":
-        toggleHistoryCard(button.getAttribute("data-workout-id"));
-        break;
-      case "change-ranking-period":
-        changeRankingPeriod(button.getAttribute("data-period"));
-        break;
-      case "insert-exercise-after":
-        insertExerciseAfter(
-          button.getAttribute("data-after-exercise-id"),
-          button.getAttribute("data-catalog-id")
-        );
-        break;
-      case "set-exercise-muscle":
-        updateExerciseSelectionMuscle(
-          button.getAttribute("data-exercise-id"),
-          button.getAttribute("data-muscle") || ""
-        );
-        break;
-      case "choose-exercise-card":
-        chooseExerciseCatalog(
-          button.getAttribute("data-exercise-id"),
-          button.getAttribute("data-catalog-id")
-        );
-        break;
-      case "start-custom-exercise":
-        startCustomExercise(button.getAttribute("data-exercise-id"));
-        break;
-      case "toggle-exercise-panel":
-        toggleExercisePanel(button.getAttribute("data-exercise-id"));
-        break;
-      case "toggle-exercise-memo":
-        toggleExerciseMemo(button.getAttribute("data-exercise-id"));
-        break;
-      case "open-settings-modal":
-        appState.ui.settingsModalOpen = true;
-        renderInput();
-        break;
-      case "close-settings-modal":
-        appState.ui.settingsModalOpen = false;
-        renderInput();
-        break;
-      case "reset-theme":
-        resetTheme();
-        renderInput();
-        renderPreview();
-        break;
-      default:
-        break;
+    const handler = CLICK_ACTIONS[button.getAttribute("data-action")];
+    if (handler) {
+      handler(button.dataset, button);
     }
   }
+
+  // data-action の名前 → 押したときの処理（data-* の値は dataset で受け取る）
+  const CLICK_ACTIONS = {
+    "close-status": function () {
+      clearStatus();
+    },
+    "step-set": function (data, button) {
+      stepSetValue(button);
+    },
+    "toggle-metrics": function () {
+      appState.ui.metricsOpen = !appState.ui.metricsOpen;
+      renderPreview();
+    },
+    "toggle-preview": function () {
+      appState.ui.previewOpen = !appState.ui.previewOpen;
+      savePreviewOpen(appState.ui.previewOpen);
+      renderPreview();
+    },
+    "jump-to-current-exercise": function (data) {
+      scrollToExerciseCard(data.exerciseId);
+    },
+    "open-history-input": function () {
+      setActiveTab("history");
+    },
+    "open-menu-modal": function () {
+      openMenuModal();
+    },
+    "close-menu-modal": function () {
+      appState.ui.menuModalOpen = false;
+      renderInput();
+    },
+    "save-menu": function () {
+      saveCurrentAsMenu();
+    },
+    "apply-menu": function (data) {
+      applyMenu(data.menuId);
+    },
+    "delete-menu": function (data) {
+      deleteMenu(data.menuId);
+    },
+    "sample-workout": function () {
+      applySampleWorkout();
+    },
+    "reset-workout": function () {
+      resetWorkout();
+    },
+    "remove-exercise": function (data) {
+      removeExercise(data.exerciseId);
+    },
+    "add-set": function (data) {
+      addSet(data.exerciseId);
+    },
+    "remove-set": function (data) {
+      removeSet(data.exerciseId, data.setId);
+    },
+    "restore-history": function (data) {
+      restoreWorkout(data.workoutId);
+    },
+    "delete-history": function (data) {
+      deleteHistory(data.workoutId);
+    },
+    "toggle-history-card": function (data) {
+      toggleHistoryCard(data.workoutId);
+    },
+    "change-ranking-period": function (data) {
+      changeRankingPeriod(data.period);
+    },
+    "insert-exercise-after": function (data) {
+      insertExerciseAfter(data.afterExerciseId, data.catalogId);
+    },
+    "set-exercise-muscle": function (data) {
+      updateExerciseSelectionMuscle(data.exerciseId, data.muscle || "");
+    },
+    "choose-exercise-card": function (data) {
+      chooseExerciseCatalog(data.exerciseId, data.catalogId);
+    },
+    "start-custom-exercise": function (data) {
+      startCustomExercise(data.exerciseId);
+    },
+    "toggle-exercise-panel": function (data) {
+      toggleExercisePanel(data.exerciseId);
+    },
+    "toggle-exercise-memo": function (data) {
+      toggleExerciseMemo(data.exerciseId);
+    },
+    "open-settings-modal": function () {
+      appState.ui.settingsModalOpen = true;
+      renderInput();
+    },
+    "close-settings-modal": function () {
+      appState.ui.settingsModalOpen = false;
+      renderInput();
+    },
+    "reset-theme": function () {
+      resetTheme();
+      renderInput();
+      renderPreview();
+    }
+  };
 
   function handleInput(event) {
     const target = event.target;
@@ -1009,38 +1000,26 @@ import {
     );
   }
 
+  // タブ → 描く関数・パネルの要素（知らないタブは入力）
+  const TAB_RENDERERS = {
+    input: renderInput,
+    preview: renderPreview,
+    history: renderHistory,
+    ranking: renderRanking
+  };
+
   function renderActiveTab() {
-    switch (appState.activeTab) {
-      case "preview":
-        renderPreview();
-        break;
-      case "history":
-        renderHistory();
-        break;
-      case "ranking":
-        if (isRankingEnabled()) {
-          renderRanking();
-        }
-        break;
-      case "input":
-      default:
-        renderInput();
-        break;
-    }
+    (TAB_RENDERERS[appState.activeTab] || renderInput)();
   }
 
   function getPanelElement(tab) {
-    switch (tab) {
-      case "preview":
-        return elements.tabPreview;
-      case "history":
-        return elements.tabHistory;
-      case "ranking":
-        return elements.tabRanking;
-      case "input":
-      default:
-        return elements.tabInput;
-    }
+    const panels = {
+      input: elements.tabInput,
+      preview: elements.tabPreview,
+      history: elements.tabHistory,
+      ranking: elements.tabRanking
+    };
+    return panels[tab] || elements.tabInput;
   }
 
   function renderStatus() {
@@ -1361,10 +1340,6 @@ import {
     const hasValidSet = isFilledSet(set);
     const exercise = findExercise(exerciseId);
     const canRemoveSet = exercise ? exercise.sets.length > 1 : false;
-    const isMaxRmSet =
-      Boolean(exercise && exercise.maxEstimated1rm) &&
-      hasValidSet &&
-      roundNumber(set.estimated1rm || 0, 1) === roundNumber(exercise.maxEstimated1rm || 0, 1);
     const ids =
       'data-exercise-id="' + escapeHtml(exerciseId) + '" data-set-id="' + escapeHtml(set.setId) + '"';
     return [
@@ -1372,7 +1347,7 @@ import {
       '  <div class="set-row-head">',
       '    <span class="set-badge">' + (setIndex + 1) + "セット目</span>",
       '    <div class="set-head-meta' +
-        (isMaxRmSet ? " is-max-rm" : "") +
+        (isMaxRmSet(exercise, set) ? " is-max-rm" : "") +
         '" data-set-meta="estimated1rm" ' +
         ids +
         '><small class="metric-label">推定RM</small><strong class="metric-value" data-set-summary="estimated1rm" ' +
@@ -1465,39 +1440,20 @@ import {
       return;
     }
 
-    const maxRm = roundNumber(exercise.maxEstimated1rm || 0, 1);
     (exercise.sets || []).forEach(function (set) {
-      const summaryNode = document.querySelector(
-        '[data-set-summary="estimated1rm"][data-exercise-id="' +
-        cssEscape(exerciseId) +
-        '"][data-set-id="' +
-        cssEscape(set.setId) +
-        '"]'
-      );
-      const metaNode = document.querySelector(
-        '[data-set-meta="estimated1rm"][data-exercise-id="' +
-        cssEscape(exerciseId) +
-        '"][data-set-id="' +
-        cssEscape(set.setId) +
-        '"]'
-      );
+      const ids = '[data-exercise-id="' + cssEscape(exerciseId) + '"][data-set-id="' + cssEscape(set.setId) + '"]';
+      const summaryNode = document.querySelector('[data-set-summary="estimated1rm"]' + ids);
+      const metaNode = document.querySelector('[data-set-meta="estimated1rm"]' + ids);
       if (!summaryNode || !metaNode) {
         return;
       }
-
-      const hasValidSet = isFilledSet(set);
-      summaryNode.textContent = hasValidSet ? formatLocaleMetric(set.estimated1rm || 0, "kg", 1) : "-";
-      metaNode.classList.toggle(
-        "is-max-rm",
-        Boolean(maxRm) && hasValidSet && roundNumber(set.estimated1rm || 0, 1) === maxRm
-      );
+      summaryNode.textContent = isFilledSet(set) ? formatLocaleMetric(set.estimated1rm || 0, "kg", 1) : "-";
+      metaNode.classList.toggle("is-max-rm", isMaxRmSet(exercise, set));
     });
   }
 
   function renderExerciseMetrics(workout) {
-    const previewExercises = (workout.exercises || []).filter(function (exercise) {
-      return Boolean((exercise.name || "").trim());
-    });
+    const previewExercises = getNamedExercises(workout);
 
     if (!previewExercises.length) {
       return "";
@@ -1537,23 +1493,6 @@ import {
     return '<div class="input-start-row" role="group" aria-label="入力の始め方">' + buttons.join("") + "</div>";
   }
 
-  function renderStartButton(options) {
-    return (
-      '<button class="input-start-button" data-action="' +
-      escapeHtml(options.action) +
-      '" type="button">' +
-      '<span class="input-start-icon" aria-hidden="true">' +
-      escapeHtml(options.icon) +
-      "</span>" +
-      '<span class="input-start-copy"><span class="input-start-label">' +
-      escapeHtml(options.label) +
-      '</span><span class="input-start-sub">' +
-      escapeHtml(options.sub) +
-      "</span></span>" +
-      "</button>"
-    );
-  }
-
   function renderInputUtilityActions() {
     return [
       // 補助的な操作は一番下に小さく（「履歴から始める」は見出しの横へ移した）
@@ -1588,35 +1527,30 @@ import {
     if (!appState.ui.settingsModalOpen) {
       return "";
     }
-    return [
-      '<div class="settings-modal-backdrop">',
-      '  <button class="settings-modal-scrim" data-action="close-settings-modal" type="button" aria-label="閉じる"></button>',
-      '  <section class="settings-modal" role="dialog" aria-modal="true" aria-label="表示設定">',
-      '    <div class="settings-modal-head">',
-      '      <h3 class="panel-title">ベースカラー設定</h3>',
-      '      <button class="ghost-button modal-close-button" data-action="close-settings-modal" type="button">閉じる</button>',
-      "    </div>",
+    const color = escapeHtml(appState.theme.baseColor || DEFAULT_THEME.baseColor);
+    return renderModal({
+      label: "表示設定",
+      title: "ベースカラー設定",
+      closeAction: "close-settings-modal",
+      body: [
       '    <p class="settings-modal-copy">アプリと送信プレビューの基調色を変更できます。</p>',
       '    <div class="settings-color-row">',
       '      <label class="tile-field settings-color-field">',
       '        <span class="field-label">ベースカラー</span>',
-      '        <input class="color-input" data-theme-field="baseColor" type="color" value="' +
-        escapeHtml(appState.theme.baseColor || DEFAULT_THEME.baseColor) +
-        '" />',
+      '        <input class="color-input" data-theme-field="baseColor" type="color" value="' + color + '" />',
       "      </label>",
       '      <label class="tile-field settings-hex-field">',
       '        <span class="field-label">HEX</span>',
       '        <input class="text-input" data-theme-field="baseColor" type="text" inputmode="text" value="' +
-        escapeHtml(appState.theme.baseColor || DEFAULT_THEME.baseColor) +
+        color +
         '" placeholder="#C96A2D" />',
       "      </label>",
       "    </div>",
       '    <div class="settings-modal-actions">',
       '      <button class="danger-button" data-action="reset-theme" type="button">初期色に戻す</button>',
-      "    </div>",
-      "  </section>",
-      "</div>"
-    ].join("");
+      "    </div>"
+      ].join("")
+    });
   }
 
   // ---- トレーニングメニュー（テンプレート） ----
@@ -1672,19 +1606,14 @@ import {
       setStatus("選んだメニューが見つかりませんでした。", "warn");
       return;
     }
-    if (
-      countNamedExercises(appState.workout) > 0 &&
-      !window.confirm("今の入力内容を、メニュー「" + menu.name + "」で置き換えますか？")
-    ) {
+    if (!confirmReplaceInput("今の入力内容を、メニュー「" + menu.name + "」で置き換えますか？")) {
       return;
     }
-    appState.workout = createWorkoutFromMenu(menu);
-    syncWorkoutUser();
     appState.ui.menuModalOpen = false;
-    appState.ui.expandedExerciseId = appState.workout.exercises[0] ? appState.workout.exercises[0].exerciseId : "";
-    appState.activeTab = "input";
-    renderWorkoutViews();
-    setStatus("メニュー「" + menu.name + "」を入れました。重さ・回数を直して記録してください。", "info");
+    replaceWorkout(
+      createWorkoutFromMenu(menu),
+      "メニュー「" + menu.name + "」を入れました。重さ・回数を直して記録してください。"
+    );
   }
 
   function deleteMenu(menuId) {
@@ -1737,14 +1666,12 @@ import {
     }
     const canSave = countNamedExercises(appState.workout) > 0;
     // 並び：今の入力を保存 → マイメニュー（保存したもの）→ おすすめ
-    return [
-      '<div class="settings-modal-backdrop">',
-      '  <button class="settings-modal-scrim" data-action="close-menu-modal" type="button" aria-label="閉じる"></button>',
-      '  <section class="settings-modal menu-modal" role="dialog" aria-modal="true" aria-label="トレーニングメニュー">',
-      '    <div class="settings-modal-head">',
-      '      <h3 class="panel-title">📋 トレーニングメニュー</h3>',
-      '      <button class="ghost-button modal-close-button" data-action="close-menu-modal" type="button">閉じる</button>',
-      "    </div>",
+    return renderModal({
+      label: "トレーニングメニュー",
+      title: "📋 トレーニングメニュー",
+      closeAction: "close-menu-modal",
+      className: "menu-modal",
+      body: [
       '    <p class="settings-modal-copy">よくやるメニューを保存しておくと、種目とセット（重さ・回数）をまとめて入れられます。</p>',
       '    <div class="menu-save-row">',
       '      <label class="tile-field menu-name-field">',
@@ -1781,10 +1708,9 @@ import {
           return renderMenuRow(expandMenuPreset(preset), false);
         }).join("") +
         "</ul>",
-      "    </div>",
-      "  </section>",
-      "</div>"
-    ].join("");
+      "    </div>"
+      ].join("")
+    });
   }
 
   function getUserInitial(displayName) {
@@ -1881,9 +1807,7 @@ import {
   }
 
   function renderWorkoutExerciseStats(workout) {
-    const exercises = (workout.exercises || []).filter(function (exercise) {
-      return Boolean((exercise.name || "").trim());
-    });
+    const exercises = getNamedExercises(workout);
 
     if (!exercises.length) {
       return "";
@@ -1985,7 +1909,7 @@ import {
         })
         .join(""),
       '  <div class="preview-bubble-footer">' +
-      escapeHtml("Created by " + (APP_CONFIG.APP_NAME || "kiloQ") + " ›") +
+      escapeHtml(getCreditText()) +
       "</div>",
       "</section>"
     ].join("");
@@ -2040,64 +1964,6 @@ import {
         "</strong>",
       "</article>"
     ].join("");
-  }
-
-  function renderAttributes(attrs) {
-    return Object.keys(attrs || {})
-      .map(function (key) {
-        return " " + key + '="' + escapeHtml(String(attrs[key])) + '"';
-      })
-      .join("");
-  }
-
-  // 開閉できるところ（送信プレビュー・集計・種目・履歴）は、すべてこの ▾ ボタンでそろえる（文字は読み上げ用）
-  function renderDisclosureToggle(options) {
-    const isOpen = Boolean(options.isOpen);
-    const attributeText = renderAttributes(options.attrs);
-    return (
-      '<button class="disclosure-toggle' +
-      (isOpen ? " is-open" : "") +
-      '" data-action="' +
-      escapeHtml(options.action) +
-      '"' +
-      attributeText +
-      ' aria-expanded="' +
-      String(isOpen) +
-      '"' +
-      ' aria-label="' +
-      escapeHtml((options.title ? options.title + "を" : "") + (isOpen ? "たたむ" : "ひらく")) +
-      '" type="button">' +
-      '<span class="disclosure-chevron" aria-hidden="true">▾</span>' +
-      "</button>"
-    );
-  }
-
-  function renderActionButton(options) {
-    const attributeText = renderAttributes(options.attrs);
-    const isDisabled = Boolean(options.disabled);
-
-    return (
-      '<button class="' +
-      escapeHtml(options.variant || "outline-button") +
-      (isDisabled ? " is-disabled" : "") +
-      '" aria-label="' +
-      escapeHtml(options.title || options.label) +
-      '" title="' +
-      escapeHtml(options.title || options.label) +
-      '" data-action="' +
-      escapeHtml(options.action || "") +
-      '"' +
-      attributeText +
-      (isDisabled ? " disabled" : "") +
-      ' type="button">' +
-      '<span class="action-label">' +
-      escapeHtml(options.label || "") +
-      "</span>" +
-      (options.icon
-        ? '<span class="action-icon" aria-hidden="true">' + escapeHtml(options.icon) + "</span>"
-        : "") +
-      "</button>"
-    );
   }
 
   function renderExercisePicker(exercise) {
@@ -2231,67 +2097,23 @@ import {
     });
   }
 
-  function fieldTemplate(options) {
-    return [
-      '<label class="field-group' +
-        (options.className ? " " + escapeHtml(options.className) : "") +
-        '">',
-      '  <span class="field-label">' + escapeHtml(options.label) + "</span>",
-      "  " + options.input,
-      "</label>"
-    ].join("");
-  }
-
   function applySampleWorkout() {
-    const timestamp = new Date().toISOString();
-    appState.workout = hydrateWorkout({
-      workoutId: generateId("workout"),
-      date: getTodayLocalDate(),
-      title: "上半身ワークアウト",
-      user: Object.assign({}, DEFAULT_USER, appState.liff.profile || {}),
-      groupKey: resolveGroupKey(),
-      exercises: [
-        {
-          exerciseId: generateId("exercise"),
-          catalogId: "bench-press",
-          primaryMuscle: "胸",
-          name: "ベンチプレス",
-          memo: "最後のセットはしっかり止めて挙上。",
-          sets: [
-            { setId: generateId("set"), weight: 60, reps: 8 },
-            { setId: generateId("set"), weight: 65, reps: 6 },
-            { setId: generateId("set"), weight: 67.5, reps: 5 }
-          ]
-        },
-        {
-          exerciseId: generateId("exercise"),
-          catalogId: "lat-pulldown",
-          primaryMuscle: "背中",
-          name: "ラットプルダウン",
-          memo: "肩をすくめずに広背筋に乗せる。",
-          sets: [
-            { setId: generateId("set"), weight: 45, reps: 12 },
-            { setId: generateId("set"), weight: 50, reps: 10 }
-          ]
-        }
-      ],
-      createdAt: timestamp,
-      updatedAt: timestamp
-    });
-
-    renderWorkoutViews();
-    setStatus("サンプル入力を反映しました。", "info");
+    replaceWorkout(
+      hydrateWorkout(
+        buildSampleWorkout({
+          user: Object.assign({}, DEFAULT_USER, appState.liff.profile || {}),
+          groupKey: resolveGroupKey()
+        })
+      ),
+      "サンプル入力を反映しました。"
+    );
   }
 
   function resetWorkout() {
-    const shouldReset = window.confirm("現在の入力内容をリセットしますか？");
-    if (!shouldReset) {
+    if (!window.confirm("現在の入力内容をリセットしますか？")) {
       return;
     }
-    appState.workout = createEmptyWorkout();
-    syncWorkoutUser();
-    renderWorkoutViews();
-    setStatus("入力内容をリセットしました。", "info");
+    replaceWorkout(createEmptyWorkout(), "入力内容をリセットしました。");
   }
 
   function deleteHistory(workoutId) {
@@ -2348,35 +2170,6 @@ import {
       console.warn("Clipboard copy failed:", error);
     }
     return false;
-  }
-
-  function mockRanking() {
-    return {
-      week: {
-        estimated1rm: [
-          { name: "Katsu", value: 122.5, label: "Bench Press" },
-          { name: "Mika", value: 118.0, label: "Squat" },
-          { name: "Ren", value: 110.5, label: "Deadlift" }
-        ],
-        totalVolume: [
-          { name: "Mika", value: 16420, label: "12 workouts" },
-          { name: "Katsu", value: 14980, label: "10 workouts" },
-          { name: "Ren", value: 13120, label: "9 workouts" }
-        ]
-      },
-      month: {
-        estimated1rm: [
-          { name: "Mika", value: 130.0, label: "Squat" },
-          { name: "Katsu", value: 125.5, label: "Bench Press" },
-          { name: "Ren", value: 119.0, label: "Deadlift" }
-        ],
-        totalVolume: [
-          { name: "Mika", value: 58240, label: "38 workouts" },
-          { name: "Ren", value: 56320, label: "35 workouts" },
-          { name: "Katsu", value: 54110, label: "34 workouts" }
-        ]
-      }
-    };
   }
 
 })();

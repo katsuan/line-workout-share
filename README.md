@@ -48,8 +48,12 @@ GitHub Pages で配信する、静的なワークアウト共有アプリです�
     - localStorage / API 保存アダプタ
   - `js/utils.js`
     - ID 生成、数値変換、エスケープなどの共通関数
+  - `js/components.js`
+    - 画面の部品（ボタン・開閉の ▾・入力欄の枠・下から出るシート）。HTML 文字列を返すだけで状態は持たない
+  - `js/fixtures.js`
+    - 見本のデータ（「サンプルを入れる」の中身、ランキングのモック）
   - `js/main.js`
-    - UI 描画とイベント制御
+    - UI 描画とイベント制御。押したときの処理は `CLICK_ACTIONS`（`data-action` の名前 → 処理）に並べる。入力の入れ替え（履歴・メニュー・サンプル・リセット）は `replaceWorkout` にまとめる
 
 ### 現在の主な機能
 

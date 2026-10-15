@@ -200,10 +200,15 @@ export function buildWorkoutFlexMessage(workout, theme, resolveGroupKey) {
   };
 }
 
-export function countNamedExercises(workout) {
+// 種目名が入っている種目だけ（選びかけ・空の種目は除く）
+export function getNamedExercises(workout) {
   return ((workout && workout.exercises) || []).filter(function (exercise) {
     return Boolean(String(exercise.name || "").trim());
-  }).length;
+  });
+}
+
+export function countNamedExercises(workout) {
+  return getNamedExercises(workout).length;
 }
 
 // 重さと回数がどちらも正の数で入っているセットだけを、記録として数える
@@ -213,6 +218,17 @@ export function isFilledSet(set) {
 
 export function countValidSets(exercise) {
   return (exercise.sets || []).filter(isFilledSet).length;
+}
+
+// その種目でいちばん推定1RMが高いセットか（入力欄の「MAX RM」の印）
+export function isMaxRmSet(exercise, set) {
+  const maxRm = roundNumber((exercise && exercise.maxEstimated1rm) || 0, 1);
+  return Boolean(maxRm) && isFilledSet(set) && roundNumber(set.estimated1rm || 0, 1) === maxRm;
+}
+
+// 送るカードの末尾の文字（プレビューも同じ文字を使う）
+export function getCreditText() {
+  return "Created by " + (APP_CONFIG.APP_NAME || "kiloQ") + " ›";
 }
 
 function buildWorkoutBubble(workout, exercises, bubbleIndex, bubbleCount, theme) {
@@ -292,7 +308,7 @@ function buildWorkoutBubble(workout, exercises, bubbleIndex, bubbleCount, theme)
       contents: [
         {
           type: "text",
-          text: "Created by " + (APP_CONFIG.APP_NAME || "kiloQ") + " ›",
+          text: getCreditText(),
           size: "xs",
           color: "#FFFFFF",
           align: "center",
