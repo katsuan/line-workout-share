@@ -59,8 +59,10 @@ def main():
     for ch in "kiloQ":  # 字の間を少しあける
         d.text((cx, 322 * S), ch, font=jua, fill=(255, 255, 255, 230), anchor="ls")
         cx += d.textlength(ch, font=jua) + 10 * S
-    d.text((x, 410 * S), "筋トレの種目・重さ・回数を", font=hira(6, 40), fill=(255, 255, 255), anchor="ls")
-    d.text((x, 466 * S), "LINE にカードで送れる", font=hira(6, 40), fill=(255, 255, 255), anchor="ls")
+    # キャッチコピー（おくるんの「つくって、おくるん」と同じ役目）と、その下に小さく説明
+    d.text((x, 412 * S), "キロを刻んで、記録を積もう", font=hira(8, 46), fill=(255, 255, 255), anchor="ls")
+    d.text((x, 474 * S), "筋トレの種目・重さ・回数を", font=hira(6, 30), fill=(255, 255, 255, 215), anchor="ls")
+    d.text((x, 518 * S), "LINE にカードで送れる", font=hira(6, 30), fill=(255, 255, 255, 215), anchor="ls")
 
     img.resize((W, H), Image.LANCZOS).convert("RGB").save(OUT, optimize=True)
     print(f"{OUT.name} を書き出しました")
