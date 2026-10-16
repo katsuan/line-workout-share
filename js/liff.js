@@ -124,3 +124,42 @@ export function isLiffShareAvailable(isReady) {
 
   return true;
 }
+
+// ---- LINE の外で開いたとき、送れる環境へ移る ----
+
+// LINE アプリの中か、ログインしているか（送り先選びが使えない理由を分けて案内する）
+export function getLiffEnvironment() {
+  const liff = window.liff;
+  if (!liff) {
+    return { inClient: false, loggedIn: false };
+  }
+  let inClient = false;
+  let loggedIn = false;
+  try {
+    inClient = typeof liff.isInClient === "function" && liff.isInClient();
+    loggedIn = typeof liff.isLoggedIn === "function" && liff.isLoggedIn();
+  } catch (error) {
+    console.warn("Failed to read LIFF environment:", error);
+  }
+  return { inClient, loggedIn };
+}
+
+// このブラウザのまま LINE でログインする（戻ってきたら送り先選びが使える）
+export function loginWithLine() {
+  if (!window.liff || typeof window.liff.login !== "function") {
+    return false;
+  }
+  const url = new URL(window.location.href);
+  url.searchParams.delete("draft");
+  window.liff.login({ redirectUri: url.toString() });
+  return true;
+}
+
+// LINE アプリで開く URL（入力中の記録を draft に入れて渡す）
+export function buildLineAppUrl(draft) {
+  if (!APP_CONFIG.LIFF_ID || APP_CONFIG.LIFF_ID === "YOUR_LIFF_ID") {
+    return "";
+  }
+  const base = "https://liff.line.me/" + APP_CONFIG.LIFF_ID;
+  return draft ? base + "?draft=" + draft : base;
+}

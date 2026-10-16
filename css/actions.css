@@ -58,3 +58,55 @@
   font-weight: 700;
 }
 
+
+/* LINE の外で開いたときの案内（送るボタンの上） */
+.line-help {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 6px;
+}
+
+.line-help[hidden] {
+  display: none;
+}
+
+.line-help-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.line-help-actions {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+
+.line-help-button {
+  display: grid;
+  place-items: center;
+  min-height: 40px;
+  padding: 6px 8px;
+  border: 1px solid var(--primary-outline);
+  border-radius: 999px;
+  background: var(--primary-surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-align: center;
+  text-decoration: none;
+}
+
+.line-help-button[hidden] {
+  display: none;
+}
+
+.line-help-button.is-app {
+  border-color: transparent;
+  background: #06c755;
+  color: #ffffff;
+}

@@ -86,6 +86,9 @@ GitHub Pages で配信する、静的なワークアウト共有アプリです�
   - `localStorage` に保存した履歴の表示
   - 初期状態はアコーディオンを閉じて表示（見出しの行をタップで開閉）
   - 「この内容で入力」（入力中の内容があるときは上書きを確認）、削除
+- LINE の外で開いたとき（送り先選びが使えないとき）
+  - 送るボタンの上に「🔑 ログインして送る」（このブラウザのまま LINE でログイン。`liff.login`）と「💬 LINE アプリで開く」（`https://liff.line.me/<LIFF ID>`）を出す
+  - どちらも入力中の記録を持っていく：ログインは sessionStorage（`kiloq:carry-draft`）、LINE アプリは `?draft=<base64url(JSON)>`。開いたら入力に戻して、URL からは消す
 - 共有
   - `liff.shareTargetPicker()` を使用
   - LIFF 利用不可時は共有実行は行わず、プレビュー中心で動作

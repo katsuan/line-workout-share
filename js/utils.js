@@ -78,3 +78,21 @@ export function formatFlexWeight(weight) {
   }
   return Number(weight).toFixed(1) + " kg";
 }
+
+// 文字列（日本語を含む JSON など）を URL に入れられる形にする（UTF-8 → base64url）
+export function encodeBase64Url(text) {
+  const bytes = new TextEncoder().encode(text);
+  let binary = "";
+  bytes.forEach(function (b) {
+    binary += String.fromCharCode(b);
+  });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+export function decodeBase64Url(text) {
+  const b64 = String(text || "").replace(/-/g, "+").replace(/_/g, "/");
+  const binary = atob(b64 + "===".slice((b64.length + 3) % 4));
+  return new TextDecoder().decode(Uint8Array.from(binary, function (c) {
+    return c.charCodeAt(0);
+  }));
+}

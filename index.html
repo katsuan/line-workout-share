@@ -59,6 +59,14 @@
       <button class="action-button secondary" id="copy-json-button" type="button" hidden>
         Flex JSONコピー
       </button>
+      <!-- LINE の外で開いたとき（送り先選びが使えないとき）だけ出す。ログインか LINE アプリで送れる環境へ移る。入力は持っていく -->
+      <div class="line-help" id="line-help" hidden>
+        <p class="line-help-text">LINE の外で開いています。送るには、どちらかから：</p>
+        <div class="line-help-actions">
+          <button class="line-help-button" id="line-login-button" data-action="line-login" type="button">🔑 ログインして送る</button>
+          <a class="line-help-button is-app" id="line-app-link" href="#">💬 LINE アプリで開く</a>
+        </div>
+      </div>
       <button class="action-button primary" id="share-button" type="button">LINEで共有</button>
     </div>
   </body>

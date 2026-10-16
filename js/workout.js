@@ -611,3 +611,42 @@ export function summarizeMenu(menu) {
   }, 0);
   return exercises.length + "種目・" + sets + "セット";
 }
+
+// ---- 入力中の記録を、別の環境（ログインの行き来・LINE アプリ）へ持っていく形 ----
+// { t: タイトル, e: [[種目名, catalogId, 部位, メモ, [[重さ, 回数], ...], 自由入力なら 1], ...] }（計算した値は持たない）
+export function packWorkoutDraft(workout) {
+  const exercises = getNamedExercises(workout).map(function (exercise) {
+    const sets = (exercise.sets || []).map(function (set) {
+      return [set.weight === "" ? "" : set.weight, set.reps === "" ? "" : set.reps];
+    });
+    const row = [exercise.name, exercise.catalogId || "", exercise.primaryMuscle || "", exercise.memo || "", sets];
+    if (exercise.isCustom) row.push(1);
+    return row;
+  });
+  if (!exercises.length) {
+    return null;
+  }
+  return { t: workout.title || "", e: exercises.slice(0, 20) };
+}
+
+export function unpackWorkoutDraft(draft) {
+  if (!draft || !Array.isArray(draft.e) || !draft.e.length) {
+    return null;
+  }
+  return createWorkoutFromMenu({
+    name: String(draft.t || ""),
+    exercises: draft.e.slice(0, 20).map(function (row) {
+      const sets = Array.isArray(row[4]) ? row[4] : [];
+      return {
+        name: String(row[0] || "").slice(0, 60),
+        catalogId: String(row[1] || ""),
+        primaryMuscle: String(row[2] || ""),
+        memo: String(row[3] || "").slice(0, 200),
+        isCustom: row[5] === 1,
+        sets: sets.slice(0, 30).map(function (pair) {
+          return { weight: pair[0] === "" ? "" : Number(pair[0]) || "", reps: pair[1] === "" ? "" : Number(pair[1]) || "" };
+        })
+      };
+    })
+  });
+}

@@ -16,7 +16,14 @@ import {
   normalizeHexColor,
   saveThemePreference
 } from "./theme.js";
-import { initLiff as initializeLiffState, loadCachedProfile, safelyGetLiffContext } from "./liff.js";
+import {
+  buildLineAppUrl,
+  getLiffEnvironment,
+  initLiff as initializeLiffState,
+  loadCachedProfile,
+  loginWithLine,
+  safelyGetLiffContext
+} from "./liff.js";
 import {
   buildMenuFromWorkout,
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
@@ -34,16 +41,18 @@ import {
   hydrateWorkout,
   isFilledSet,
   isMaxRmSet,
+  packWorkoutDraft,
   resolveWorkoutTitle,
   sanitizeWorkout as sanitizeWorkoutModel,
-  summarizeMenu
+  summarizeMenu,
+  unpackWorkoutDraft
 } from "./workout.js";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
 } from "./repositories.js";
-import { cssEscape, escapeHtml, formatLocaleMetric, generateId, getTodayLocalDate } from "./utils.js";
+import { cssEscape, decodeBase64Url, encodeBase64Url, escapeHtml, formatLocaleMetric, generateId, getTodayLocalDate } from "./utils.js";
 import {
   fieldTemplate,
   renderActionButton,
@@ -140,11 +149,13 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js";
     }
 
     const liffResult = await initLiff();
+    // ログインの行き来・LINE アプリへ移る前に入れていた記録を戻す
+    restoreCarriedDraft();
     if (!liffResult.ready) {
       setStatus(
         isDebugModeEnabled()
           ? "共有機能を使えないため、プレビュー中心で起動しました。デバッグ用のJSON確認は利用できます。"
-          : "この環境では共有機能を使えないため、プレビュー中心で起動しました。",
+          : "LINE とつながらないため、送る前の確認だけできます。",
         "warn"
       );
     }
@@ -167,6 +178,9 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js";
     elements.actionBar = document.getElementById("action-bar");
     elements.copyJsonButton = document.getElementById("copy-json-button");
     elements.shareButton = document.getElementById("share-button");
+    elements.lineHelp = document.getElementById("line-help");
+    elements.lineLoginButton = document.getElementById("line-login-button");
+    elements.lineAppLink = document.getElementById("line-app-link");
   }
 
   function bindEvents() {
@@ -515,7 +529,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js";
           );
         }
       } else {
-        setStatus("この環境では共有を実行できません。対応環境で開いてください。", "warn");
+        setStatus("LINE の外では送れません。下の「ログインして送る」か「LINE アプリで開く」から送ってください。", "warn");
       }
       return;
     }
@@ -769,6 +783,9 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js";
 
   // data-action の名前 → 押したときの処理（data-* の値は dataset で受け取る）
   const CLICK_ACTIONS = {
+    "line-login": function () {
+      startLineLogin();
+    },
     "close-status": function () {
       clearStatus();
     },
@@ -1097,11 +1114,82 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js";
       return;
     }
 
+    renderLineHelp();
+
     elements.actionBar.classList.toggle("has-debug-actions", isDebugModeEnabled());
     elements.copyJsonButton.hidden = !isDebugModeEnabled();
     elements.copyJsonButton.textContent = appState.liff.shareAvailable
       ? "Flex JSONコピー"
       : "デバッグコピー";
+  }
+
+  // ---- LINE の外で開いたとき：送れる環境（ログイン・LINE アプリ）へ移る導線 ----
+  const DRAFT_KEY = "kiloq:carry-draft";
+
+  function encodedDraft() {
+    const draft = packWorkoutDraft(appState.workout);
+    return draft ? encodeBase64Url(JSON.stringify(draft)) : "";
+  }
+
+  // 送り先選びが使えないとき（LIFF の準備ができてからだけ）、送るボタンの上に案内を出す
+  function renderLineHelp() {
+    if (!elements.lineHelp) {
+      return;
+    }
+    const show = appState.liff.initialized && !appState.liff.shareAvailable && !isDebugModeEnabled();
+    elements.lineHelp.hidden = !show;
+    if (!show) {
+      return;
+    }
+    const env = getLiffEnvironment();
+    // LINE アプリの中で使えないときはログインでは直らないので、ログインのボタンは出さない
+    elements.lineLoginButton.hidden = !appState.liff.ready || env.inClient || env.loggedIn;
+    const appUrl = buildLineAppUrl(encodedDraft());
+    elements.lineAppLink.hidden = !appUrl || env.inClient;
+    elements.lineAppLink.href = appUrl || "#";
+  }
+
+  function startLineLogin() {
+    // ログインの行き来で入力が消えないよう、このブラウザに一時的に残す
+    try {
+      const draft = encodedDraft();
+      if (draft) sessionStorage.setItem(DRAFT_KEY, draft);
+    } catch (error) {
+      console.warn("Failed to keep draft:", error);
+    }
+    if (!loginWithLine()) {
+      setStatus("LINE のログインを始められませんでした。時間をおいてもう一度お試しください。", "warn");
+    }
+  }
+
+  // ?draft=（LINE アプリで開いたとき）か、ログイン前に残した記録があれば、入力に戻す
+  function restoreCarriedDraft() {
+    let raw = "";
+    try {
+      raw = new URLSearchParams(window.location.search).get("draft") || sessionStorage.getItem(DRAFT_KEY) || "";
+      sessionStorage.removeItem(DRAFT_KEY);
+    } catch (error) {
+      raw = new URLSearchParams(window.location.search).get("draft") || "";
+    }
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("draft")) {
+      url.searchParams.delete("draft");
+      history.replaceState(null, "", url);
+    }
+    if (!raw) {
+      return;
+    }
+    try {
+      const workout = unpackWorkoutDraft(JSON.parse(decodeBase64Url(raw)));
+      if (!workout) {
+        return;
+      }
+      appState.workout = workout;
+      appState.ui.expandedExerciseId = workout.exercises[0] ? workout.exercises[0].exerciseId : "";
+      setStatus("入力していた記録を戻しました。", "info");
+    } catch (error) {
+      console.warn("Failed to restore draft:", error);
+    }
   }
 
   function scrollToPanel(tab) {
