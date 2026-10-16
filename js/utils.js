@@ -1,5 +1,11 @@
+// 推定1RM・ボリュームを計算できるセット（重さも回数も 1 以上）
 export function isValidSetInput(weight, reps) {
   return weight !== null && reps !== null && weight > 0 && reps > 0;
+}
+
+// 記録として残すセット（重さ・回数が両方入っていればよい。0kg は自重、0回は挑戦の記録）
+export function isRecordedSetInput(weight, reps) {
+  return weight !== null && reps !== null && weight >= 0 && reps >= 0;
 }
 
 export function toNullableNumber(value) {
@@ -73,8 +79,8 @@ export function cssEscape(value) {
 }
 
 export function formatFlexWeight(weight) {
-  if (weight === null || weight === undefined || weight === "") {
-    return "Body Weight";
+  if (weight === null || weight === undefined || weight === "" || Number(weight) === 0) {
+    return "自重";
   }
   return Number(weight).toFixed(1) + " kg";
 }

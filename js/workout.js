@@ -13,6 +13,7 @@ import {
   formatMetric,
   generateId,
   getTodayLocalDate,
+  isRecordedSetInput,
   isValidSetInput,
   roundNumber,
   toNullableNumber,
@@ -211,9 +212,14 @@ export function countNamedExercises(workout) {
   return getNamedExercises(workout).length;
 }
 
-// 重さと回数がどちらも正の数で入っているセットだけを、記録として数える
+// 重さと回数がどちらも入っているセットを、記録として数える（0kg＝自重、0回＝挑戦も残す。推定1RMは出さない）
 export function isFilledSet(set) {
-  return isValidSetInput(toNullableNumber(set.weight), toNullableNumber(set.reps));
+  return isRecordedSetInput(toNullableNumber(set.weight), toNullableNumber(set.reps));
+}
+
+// 推定1RMが出るセット（重さも回数も 1 以上）
+export function hasEstimated1rm(set) {
+  return Number((set && set.estimated1rm) || 0) > 0;
 }
 
 export function countValidSets(exercise) {
@@ -344,7 +350,7 @@ function buildExerciseBoxForFlex(exercise, theme) {
           },
           {
             type: "text",
-            text: "RM : " + formatMetric(exercise.maxEstimated1rm, "kg", 0),
+            text: "RM : " + (exercise.maxEstimated1rm > 0 ? formatMetric(exercise.maxEstimated1rm, "kg", 0) : "-"),
             size: "sm",
             align: "end",
             flex: 3
@@ -373,7 +379,7 @@ function buildSetLinesForFlex(exercise, theme) {
   const visibleSets = exercise.sets.slice(0, MAX_SETS_PER_FLEX_EXERCISE);
   const lines = visibleSets.map(function (set, index) {
     const isMaxRmSet =
-      roundNumber(set.estimated1rm || 0, 0) === roundNumber(exercise.maxEstimated1rm || 0, 0);
+      hasEstimated1rm(set) && roundNumber(set.estimated1rm || 0, 0) === roundNumber(exercise.maxEstimated1rm || 0, 0);
     return {
       type: "box",
       layout: "horizontal",
@@ -397,7 +403,7 @@ function buildSetLinesForFlex(exercise, theme) {
         },
         {
           type: "text",
-          text: formatFlexWeight(set.weight) + "  ×  " + formatMetric(set.reps, "reps", 0),
+          text: formatFlexWeight(set.weight) + "  ×  " + formatMetric(set.reps, "reps", 0) + (Number(set.reps) === 0 ? "（挑戦）" : ""),
           size: "xs",
           wrap: true,
           flex: 6
@@ -644,7 +650,11 @@ export function unpackWorkoutDraft(draft) {
         memo: String(row[3] || "").slice(0, 200),
         isCustom: row[5] === 1,
         sets: sets.slice(0, 30).map(function (pair) {
-          return { weight: pair[0] === "" ? "" : Number(pair[0]) || "", reps: pair[1] === "" ? "" : Number(pair[1]) || "" };
+          // 0（自重・挑戦）も残す
+          const num = function (v) {
+            return v === "" || v === null || !Number.isFinite(Number(v)) ? "" : Number(v);
+          };
+          return { weight: num(pair[0]), reps: num(pair[1]) };
         })
       };
     })

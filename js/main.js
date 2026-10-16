@@ -39,6 +39,7 @@ import {
   getDefaultWorkoutTitle,
   getNamedExercises,
   hydrateWorkout,
+  hasEstimated1rm,
   isFilledSet,
   isMaxRmSet,
   packWorkoutDraft,
@@ -1425,7 +1426,6 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js";
   // 1セット分の行。スマホで押しやすいよう2段にし、kg・回数は −／＋ でも変えられる
   //   上段: 何セット目・推定RM・削除  下段: kg と回数
   function renderSetRow(exerciseId, set, setIndex) {
-    const hasValidSet = isFilledSet(set);
     const exercise = findExercise(exerciseId);
     const canRemoveSet = exercise ? exercise.sets.length > 1 : false;
     const ids =
@@ -1441,7 +1441,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js";
         '><small class="metric-label">推定RM</small><strong class="metric-value" data-set-summary="estimated1rm" ' +
         ids +
         ">" +
-        escapeHtml(hasValidSet ? formatLocaleMetric(set.estimated1rm || 0, "kg", 1) : "-") +
+        escapeHtml(hasEstimated1rm(set) ? formatLocaleMetric(set.estimated1rm, "kg", 1) : "-") +
         "</strong></div>",
       renderActionButton({
         label: "削除",
@@ -1535,7 +1535,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js";
       if (!summaryNode || !metaNode) {
         return;
       }
-      summaryNode.textContent = isFilledSet(set) ? formatLocaleMetric(set.estimated1rm || 0, "kg", 1) : "-";
+      summaryNode.textContent = hasEstimated1rm(set) ? formatLocaleMetric(set.estimated1rm, "kg", 1) : "-";
       metaNode.classList.toggle("is-max-rm", isMaxRmSet(exercise, set));
     });
   }
@@ -2048,7 +2048,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js";
       '    <span class="summary-inline-meta">' + escapeHtml(caption.join(" / ")) + "</span>",
       "  </div>",
       '  <strong class="summary-value summary-value-inline">' +
-        escapeHtml(formatLocaleMetric(exercise.maxEstimated1rm || 0, "kg", 1)) +
+        escapeHtml(exercise.maxEstimated1rm > 0 ? formatLocaleMetric(exercise.maxEstimated1rm, "kg", 1) : "-") +
         "</strong>",
       "</article>"
     ].join("");
