@@ -918,3 +918,103 @@ button:disabled {
 .disclosure-toggle.is-open .disclosure-chevron {
   transform: rotate(180deg);
 }
+
+/* 草グラフ（ユーザーのアイコンから開くシートの上）。1列が1週（上が月曜） */
+.grass {
+  display: grid;
+  gap: 8px;
+}
+
+.grass-grid {
+  display: flex;
+  gap: 3px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.grass-days,
+.grass-week {
+  display: grid;
+  grid-template-rows: 14px repeat(7, 12px);
+  gap: 3px;
+  flex: 0 0 auto;
+}
+
+.grass-days span {
+  width: 14px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 12px;
+}
+
+.grass-month {
+  width: 12px;
+  overflow: visible;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+.grass-cell {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--primary);
+}
+
+.grass-cell.is-level-0 {
+  background: var(--line);
+}
+
+.grass-cell.is-level-1 {
+  opacity: 0.3;
+}
+
+.grass-cell.is-level-2 {
+  opacity: 0.55;
+}
+
+.grass-cell.is-level-3 {
+  opacity: 0.8;
+}
+
+.grass-cell.is-future {
+  background: transparent;
+}
+
+.grass-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+}
+
+.grass-stats {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.grass-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.grass-legend .grass-cell {
+  width: 10px;
+  height: 10px;
+}
+
+.settings-modal-subtitle {
+  margin: 6px 0 -4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 0.95rem;
+}
+

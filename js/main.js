@@ -8,14 +8,14 @@ import {
   MENU_PRESETS,
   MUSCLE_FILTERS,
   STORAGE_KEYS
-} from "./constants.js?v=202610191254";
+} from "./constants.js?v=202610191256";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./theme.js?v=202610191254";
+} from "./theme.js?v=202610191256";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -23,7 +23,7 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./liff.js?v=202610191254";
+} from "./liff.js?v=202610191256";
 import {
   buildMenuFromWorkout,
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
@@ -47,21 +47,21 @@ import {
   sanitizeWorkout as sanitizeWorkoutModel,
   summarizeMenu,
   unpackWorkoutDraft
-} from "./workout.js?v=202610191254";
+} from "./workout.js?v=202610191256";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./repositories.js?v=202610191254";
-import { cssEscape, decodeBase64Url, encodeBase64Url, escapeHtml, formatLocaleMetric, generateId, getTodayLocalDate } from "./utils.js?v=202610191254";
+} from "./repositories.js?v=202610191256";
+import { cssEscape, decodeBase64Url, encodeBase64Url, escapeHtml, formatLocaleMetric, generateId, getTodayLocalDate } from "./utils.js?v=202610191256";
 import {
   fieldTemplate,
   renderActionButton,
   renderDisclosureToggle,
   renderModal,
   renderStartButton
-} from "./components.js?v=202610191254";
-import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610191254";
+} from "./components.js?v=202610191256";
+import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610191256";
 
 (function () {
 
@@ -1751,7 +1751,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610191254";
       ? '<img class="user-avatar-image" src="' + escapeHtml(profile.pictureUrl) + '" alt="" />'
       : '<span class="user-avatar-fallback">' + escapeHtml(getUserInitial(profile.displayName)) + "</span>";
     return [
-      '<button class="user-avatar-button" data-action="open-settings-modal" type="button" aria-label="表示設定を開く" title="表示設定">',
+      '<button class="user-avatar-button" data-action="open-settings-modal" type="button" aria-label="記録の草グラフと表示設定を開く" title="表示設定">',
       '  <span class="user-avatar">' + avatar + "</span>",
       "</button>"
     ].join("");
@@ -1763,10 +1763,12 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610191254";
     }
     const color = escapeHtml(appState.theme.baseColor || DEFAULT_THEME.baseColor);
     return renderModal({
-      label: "表示設定",
-      title: "ベースカラー設定",
+      label: "あなたの記録と表示設定",
+      title: "あなたの記録",
       closeAction: "close-settings-modal",
       body: [
+      renderGrass(),
+      '    <h4 class="settings-modal-subtitle">表示設定</h4>',
       '    <p class="settings-modal-copy">アプリと送信プレビューの基調色を変更できます。</p>',
       '    <div class="settings-color-row">',
       '      <label class="tile-field settings-color-field">',
@@ -1785,6 +1787,76 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610191254";
       "    </div>"
       ].join("")
     });
+  }
+
+  // ---- 草グラフ（GitHub のように、記録した日のます目を塗る） ----
+  // この端末の履歴（送った記録）から、日ごとのセット数で4段階に塗る。いちばん右の列が今週（月曜はじまり）
+  const GRASS_WEEKS = 18;
+
+  function renderGrass() {
+    const setsByDay = {};
+    appState.history.forEach(function (workout) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(workout.date || ""))) return;
+      const sets = (workout.exercises || []).reduce(function (sum, exercise) {
+        return sum + (exercise.sets || []).length;
+      }, 0);
+      setsByDay[workout.date] = (setsByDay[workout.date] || 0) + sets;
+    });
+    const toKey = function (d) {
+      return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    };
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const start = new Date(today);
+    start.setDate(start.getDate() - ((today.getDay() + 6) % 7) - (GRASS_WEEKS - 1) * 7); // GRASS_WEEKS 週前の月曜
+    const level = function (sets) {
+      return sets <= 0 ? 0 : sets < 6 ? 1 : sets < 12 ? 2 : sets < 20 ? 3 : 4;
+    };
+
+    let days = 0;
+    let best = 0;
+    let run = 0;
+    const columns = [];
+    for (let week = 0; week < GRASS_WEEKS; week += 1) {
+      const cells = [];
+      let monthLabel = "";
+      for (let dow = 0; dow < 7; dow += 1) {
+        const d = new Date(start);
+        d.setDate(start.getDate() + week * 7 + dow);
+        // 月の1日がある列に月を書く。いちばん左の列は、次の週で月が変わらないときだけ（ラベルが重ならないように）
+        if (d.getDate() === 1 || (week === 0 && dow === 0 && d.getDate() <= 21)) monthLabel = String(d.getMonth() + 1) + "月";
+        if (d > today) {
+          cells.push('<span class="grass-cell is-future"></span>');
+          continue;
+        }
+        const key = toKey(d);
+        const sets = setsByDay[key] || 0;
+        if (sets > 0) {
+          days += 1;
+          run += 1;
+          best = Math.max(best, run);
+        } else {
+          run = 0;
+        }
+        const label = (d.getMonth() + 1) + "/" + d.getDate() + (sets ? " ・ " + sets + "セット" : " ・ 記録なし");
+        cells.push('<span class="grass-cell is-level-' + level(sets) + '" title="' + escapeHtml(label) + '"></span>');
+      }
+      columns.push('<div class="grass-week"><span class="grass-month">' + escapeHtml(monthLabel) + "</span>" + cells.join("") + "</div>");
+    }
+
+    return [
+      '<section class="grass" aria-label="記録した日（' + GRASS_WEEKS + '週）">',
+      '  <div class="grass-grid">',
+      '    <div class="grass-days" aria-hidden="true"><span></span><span>月</span><span></span><span>水</span><span></span><span>金</span><span></span><span></span></div>',
+      columns.join(""),
+      "  </div>",
+      '  <div class="grass-foot">',
+      '    <p class="grass-stats">' + GRASS_WEEKS + "週で <b>" + days + "日</b> ・ 最長 <b>" + best + "日</b> 連続</p>",
+      '    <p class="grass-legend" aria-hidden="true">少<span class="grass-cell is-level-0"></span><span class="grass-cell is-level-1"></span><span class="grass-cell is-level-2"></span><span class="grass-cell is-level-3"></span><span class="grass-cell is-level-4"></span>多</p>',
+      "  </div>",
+      '  <p class="settings-modal-copy">この端末で送った記録から数えています（1日のセット数で色が濃くなります）。</p>',
+      "</section>"
+    ].join("");
   }
 
   // ---- トレーニングメニュー（テンプレート） ----
