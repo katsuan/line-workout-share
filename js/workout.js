@@ -6,7 +6,7 @@ import {
   MAX_EXERCISES_PER_BUBBLE,
   MAX_FLEX_UNITS_PER_BUBBLE,
   MAX_SETS_PER_FLEX_EXERCISE
-} from "./constants.js?v=202610191251";
+} from "./constants.js?v=202610191254";
 import {
   deepClone,
   formatFlexWeight,
@@ -18,7 +18,7 @@ import {
   roundNumber,
   toNullableNumber,
   truncateText
-} from "./utils.js?v=202610191251";
+} from "./utils.js?v=202610191254";
 
 export function createEmptyWorkout() {
   const timestamp = new Date().toISOString();

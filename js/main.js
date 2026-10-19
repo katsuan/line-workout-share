@@ -8,14 +8,14 @@ import {
   MENU_PRESETS,
   MUSCLE_FILTERS,
   STORAGE_KEYS
-} from "./constants.js?v=202610191251";
+} from "./constants.js?v=202610191254";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./theme.js?v=202610191251";
+} from "./theme.js?v=202610191254";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -23,7 +23,7 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./liff.js?v=202610191251";
+} from "./liff.js?v=202610191254";
 import {
   buildMenuFromWorkout,
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
@@ -47,21 +47,21 @@ import {
   sanitizeWorkout as sanitizeWorkoutModel,
   summarizeMenu,
   unpackWorkoutDraft
-} from "./workout.js?v=202610191251";
+} from "./workout.js?v=202610191254";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./repositories.js?v=202610191251";
-import { cssEscape, decodeBase64Url, encodeBase64Url, escapeHtml, formatLocaleMetric, generateId, getTodayLocalDate } from "./utils.js?v=202610191251";
+} from "./repositories.js?v=202610191254";
+import { cssEscape, decodeBase64Url, encodeBase64Url, escapeHtml, formatLocaleMetric, generateId, getTodayLocalDate } from "./utils.js?v=202610191254";
 import {
   fieldTemplate,
   renderActionButton,
   renderDisclosureToggle,
   renderModal,
   renderStartButton
-} from "./components.js?v=202610191251";
-import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610191251";
+} from "./components.js?v=202610191254";
+import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610191254";
 
 (function () {
 
@@ -87,7 +87,9 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610191251";
       // トレーニングメニュー（テンプレート）のシート。menuName は「保存する名前」の入力中の値
       menuModalOpen: false,
       menuName: "",
-      openHistoryIds: {}
+      openHistoryIds: {},
+      // 履歴の月ごとのまとまり（"2026-10" → 開いているか）。まだ触っていない月は、いちばん新しい月だけ開く
+      openHistoryMonths: {}
     },
     theme: Object.assign({}, DEFAULT_THEME),
     liff: {
@@ -186,6 +188,13 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610191251";
 
   function bindEvents() {
     document.addEventListener("click", handleClick);
+    // 月ごとのまとまり（<details>）の開け閉めを覚えておく（toggle は伝わらないので capture で受ける）
+    elements.tabHistory.addEventListener("toggle", function (event) {
+      const month = event.target && event.target.dataset ? event.target.dataset.historyMonth : "";
+      if (month) {
+        appState.ui.openHistoryMonths[month] = event.target.open;
+      }
+    }, true);
     document.addEventListener("input", handleInput);
     document.addEventListener("change", handleInput);
     window.addEventListener("scroll", syncActiveTabToScroll, { passive: true });
@@ -667,17 +676,151 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610191251";
       return;
     }
 
+    // 月ごと（新しい月が上）にまとめる。日付のない記録は最後に「日付なし」
+    const months = [];
+    const byMonth = {};
+    appState.history.forEach(function (workout) {
+      const key = historyMonthKey(workout);
+      if (!byMonth[key]) {
+        byMonth[key] = [];
+        months.push(key);
+      }
+      byMonth[key].push(workout);
+    });
+    months.sort(function (a, b) {
+      return a === "none" ? 1 : b === "none" ? -1 : b.localeCompare(a);
+    });
+
     const html = [
-      '<div class="history-stack">',
-      appState.history
-        .map(function (workout) {
-          return renderHistoryCard(workout);
+      '<div class="history-tools">',
+      '  <p class="history-tools-count">' + escapeHtml(String(appState.history.length)) + "件の記録</p>",
+      renderActionButton({ label: "⬇ 記録をダウンロード", variant: "pill-button history-download-button", action: "download-history" }),
+      "</div>",
+      months
+        .map(function (key, index) {
+          const list = byMonth[key];
+          const stored = appState.ui.openHistoryMonths[key];
+          const isOpen = stored === undefined ? index === 0 : stored;
+          return [
+            '<details class="history-month" data-history-month="' + escapeHtml(key) + '"' + (isOpen ? " open" : "") + ">",
+            '  <summary class="history-month-head">',
+            '    <span class="history-month-title">' + escapeHtml(historyMonthLabel(key)) + "</span>",
+            '    <span class="history-month-meta">' + escapeHtml(String(list.length)) + "回</span>",
+            "  </summary>",
+            '  <div class="history-stack">',
+            list.map(renderHistoryCard).join(""),
+            "  </div>",
+            '  <div class="history-month-tools">',
+            renderActionButton({
+              label: "⬇ この月をダウンロード",
+              variant: "pill-button history-download-button",
+              action: "download-history",
+              attrs: { "data-month": key }
+            }),
+            "  </div>",
+            "</details>"
+          ].join("");
         })
-        .join(""),
-      "</div>"
+        .join("")
     ].join("");
 
     elements.tabHistory.innerHTML = html;
+  }
+
+  function historyMonthKey(workout) {
+    const date = String((workout && workout.date) || "");
+    return /^\d{4}-\d{2}/.test(date) ? date.slice(0, 7) : "none";
+  }
+
+  function historyMonthLabel(key) {
+    return key === "none" ? "日付なし" : Number(key.slice(0, 4)) + "年" + Number(key.slice(5, 7)) + "月";
+  }
+
+  // ---- 記録のダウンロード（CSV。Excel・Google スプレッドシートで開ける） ----
+  // 1行が1セット。重さ 0 は「自重」、回数 0 は「挑戦」と備考に入れる。
+  // LINE の中のブラウザはファイルを保存できないことが多いので、そこでは共有メニュー（ファイル）→ だめならコピー
+  function buildHistoryCsv(workouts) {
+    const cell = function (value) {
+      const text = value === null || value === undefined ? "" : String(value);
+      return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+    };
+    const rows = [["日付", "タイトル", "種目", "部位", "セット", "重さ(kg)", "回数", "推定RM(kg)", "備考", "メモ"]];
+    workouts
+      .slice()
+      .sort(function (a, b) {
+        return String(a.date || "").localeCompare(String(b.date || ""));
+      })
+      .forEach(function (workout) {
+        const title = resolveWorkoutTitle(workout.title, workout.user);
+        (workout.exercises || []).forEach(function (exercise) {
+          (exercise.sets || []).forEach(function (set, index) {
+            const note = Number(set.weight) === 0 ? "自重" : Number(set.reps) === 0 ? "挑戦" : "";
+            rows.push([
+              workout.date || "",
+              title,
+              exercise.name || "",
+              exercise.primaryMuscle || "",
+              index + 1,
+              set.weight,
+              set.reps,
+              Number(set.estimated1rm) > 0 ? set.estimated1rm : "",
+              note,
+              index === 0 ? exercise.memo || "" : ""
+            ]);
+          });
+        });
+      });
+    return rows.map(function (row) {
+      return row.map(cell).join(",");
+    }).join("\r\n");
+  }
+
+  async function downloadHistory(month) {
+    const list = month
+      ? appState.history.filter(function (workout) {
+          return historyMonthKey(workout) === month;
+        })
+      : appState.history;
+    if (!list.length) {
+      setStatus("ダウンロードできる記録がありません。", "warn");
+      return;
+    }
+    const csv = buildHistoryCsv(list);
+    const stamp = month && month !== "none" ? month : getTodayLocalDate();
+    const name = "kiloq-records-" + stamp + ".csv";
+    const file = new File(["\uFEFF" + csv], name, { type: "text/csv" }); // 先頭の BOM で Excel でも文字化けしない
+    const env = getLiffEnvironment();
+
+    if (env.inClient) {
+      try {
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: name });
+          setStatus("記録を共有メニューに渡しました（ファイルに保存できます）。", "info");
+          return;
+        }
+      } catch (error) {
+        if (error && error.name === "AbortError") return;
+      }
+      try {
+        await navigator.clipboard.writeText(csv);
+        setStatus("LINE の中では保存できないので、記録（CSV）をコピーしました。メモやスプレッドシートに貼り付けてください。", "info");
+      } catch (error) {
+        setStatus("ダウンロードできませんでした。ブラウザで開くと保存できます。", "warn");
+      }
+      return;
+    }
+
+    const url = URL.createObjectURL(file);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(function () {
+      URL.revokeObjectURL(url);
+    }, 1000);
+    setStatus(name + " をダウンロードしました。", "info");
   }
 
   function renderRanking() {
@@ -838,6 +981,9 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610191251";
     },
     "remove-set": function (data) {
       removeSet(data.exerciseId, data.setId);
+    },
+    "download-history": function (data) {
+      void downloadHistory(data.month || "");
     },
     "restore-history": function (data) {
       restoreWorkout(data.workoutId);
