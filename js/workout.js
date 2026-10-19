@@ -6,7 +6,7 @@ import {
   MAX_EXERCISES_PER_BUBBLE,
   MAX_FLEX_UNITS_PER_BUBBLE,
   MAX_SETS_PER_FLEX_EXERCISE
-} from "./constants.js";
+} from "./constants.js?v=202610191251";
 import {
   deepClone,
   formatFlexWeight,
@@ -18,7 +18,7 @@ import {
   roundNumber,
   toNullableNumber,
   truncateText
-} from "./utils.js";
+} from "./utils.js?v=202610191251";
 
 export function createEmptyWorkout() {
   const timestamp = new Date().toISOString();
@@ -179,8 +179,9 @@ export function resolveWorkoutTitle(title, user) {
   return normalizedTitle || getDefaultWorkoutTitle(user);
 }
 
-export function buildWorkoutFlexMessage(workout, theme, resolveGroupKey) {
-  const calculatedWorkout = sanitizeWorkout(workout, resolveGroupKey);
+// history（この端末の履歴。新しい順）を渡すと、種目ごとに前回の記録（推定RM）と今回との差をカードに出す
+export function buildWorkoutFlexMessage(workout, theme, resolveGroupKey, history) {
+  const calculatedWorkout = attachPreviousRecords(sanitizeWorkout(workout, resolveGroupKey), history);
   const exerciseChunks = splitExercisesForFlexBubbles(calculatedWorkout.exercises);
   const activeTheme = theme || FLEX_THEME;
 
@@ -358,6 +359,7 @@ function buildExerciseBoxForFlex(exercise, theme) {
         ]
       }
     ]
+      .concat(exercise.previous ? [buildPreviousLineForFlex(exercise, theme)] : [])
       .concat(buildSetLinesForFlex(exercise, theme))
       .concat(
         exercise.memo
@@ -479,11 +481,54 @@ function splitExercisesForFlexBubbles(exercises) {
   return chunks;
 }
 
+// 同じ種目の前回の記録：履歴（新しい順）から、この記録以外で同じ種目（catalogId、なければ種目名）の推定RM が出ているもの
+export function findPreviousRecord(exercise, history, workoutId) {
+  const sameExercise = function (other) {
+    return exercise.catalogId ? other.catalogId === exercise.catalogId : String(other.name || "").trim() === String(exercise.name || "").trim();
+  };
+  for (const past of history || []) {
+    if (!past || past.workoutId === workoutId) continue;
+    const match = (past.exercises || []).find(function (other) {
+      return sameExercise(other) && Number(other.maxEstimated1rm || 0) > 0;
+    });
+    if (match) {
+      return { date: past.date || "", maxEstimated1rm: roundNumber(Number(match.maxEstimated1rm), 1) };
+    }
+  }
+  return null;
+}
+
+function attachPreviousRecords(workout, history) {
+  if (!history || !history.length) return workout;
+  return Object.assign({}, workout, {
+    exercises: workout.exercises.map(function (exercise) {
+      const previous = exercise.maxEstimated1rm > 0 ? findPreviousRecord(exercise, history, workout.workoutId) : null;
+      return previous ? Object.assign({}, exercise, { previous: previous }) : exercise;
+    })
+  });
+}
+
+// 「前回 10/12 RM 73 kg（+3）」の1行。上がったときはテーマの色で目立たせる
+function buildPreviousLineForFlex(exercise, theme) {
+  const previous = exercise.previous;
+  const diff = roundNumber(exercise.maxEstimated1rm - previous.maxEstimated1rm, 1);
+  const sign = diff > 0 ? "+" : diff < 0 ? "−" : "±";
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(previous.date) ? Number(previous.date.slice(5, 7)) + "/" + Number(previous.date.slice(8)) + " " : "";
+  return {
+    type: "text",
+    text: "前回 " + date + "RM " + formatMetric(previous.maxEstimated1rm, "kg", 0) + "（" + sign + Math.abs(diff) + "kg）",
+    size: "xxs",
+    color: diff > 0 ? theme.accent : theme.textMuted,
+    weight: diff > 0 ? "bold" : "regular",
+    wrap: true
+  };
+}
+
 function estimateExerciseFlexUnits(exercise) {
   const visibleSetCount = Math.min((exercise.sets || []).length, MAX_SETS_PER_FLEX_EXERCISE);
   const hiddenSetCount = (exercise.sets || []).length > MAX_SETS_PER_FLEX_EXERCISE ? 1 : 0;
   const memoUnits = exercise.memo ? Math.min(2, Math.ceil(String(exercise.memo).length / 24)) : 0;
-  return 2 + visibleSetCount + hiddenSetCount + memoUnits;
+  return 2 + visibleSetCount + hiddenSetCount + memoUnits + (exercise.previous ? 1 : 0);
 }
 
 function buildWorkoutAltText(workout) {

@@ -8,14 +8,14 @@ import {
   MENU_PRESETS,
   MUSCLE_FILTERS,
   STORAGE_KEYS
-} from "./constants.js";
+} from "./constants.js?v=202610191251";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./theme.js";
+} from "./theme.js?v=202610191251";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -23,7 +23,7 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./liff.js";
+} from "./liff.js?v=202610191251";
 import {
   buildMenuFromWorkout,
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
@@ -47,21 +47,21 @@ import {
   sanitizeWorkout as sanitizeWorkoutModel,
   summarizeMenu,
   unpackWorkoutDraft
-} from "./workout.js";
+} from "./workout.js?v=202610191251";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./repositories.js";
-import { cssEscape, decodeBase64Url, encodeBase64Url, escapeHtml, formatLocaleMetric, generateId, getTodayLocalDate } from "./utils.js";
+} from "./repositories.js?v=202610191251";
+import { cssEscape, decodeBase64Url, encodeBase64Url, escapeHtml, formatLocaleMetric, generateId, getTodayLocalDate } from "./utils.js?v=202610191251";
 import {
   fieldTemplate,
   renderActionButton,
   renderDisclosureToggle,
   renderModal,
   renderStartButton
-} from "./components.js";
-import { buildSampleWorkout, mockRanking } from "./fixtures.js";
+} from "./components.js?v=202610191251";
+import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610191251";
 
 (function () {
 
@@ -422,7 +422,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js";
   }
 
   function buildWorkoutFlexMessage(workout) {
-    return buildWorkoutFlexPayload(workout, getFlexTheme(), resolveGroupKey);
+    return buildWorkoutFlexPayload(workout, getFlexTheme(), resolveGroupKey, appState.history);
   }
 
   function validateWorkout(workout) {
