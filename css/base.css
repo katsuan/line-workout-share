@@ -62,7 +62,8 @@ button {
 .app-shell {
   max-width: 760px;
   margin: 0 auto;
-  padding: 10px 12px 126px;
+  /* 下の送信バーの高さ（js が測って --action-bar-height に入れる）＋少しの余白。LINE の外の案内が出てバーが高くなっても最後まで見える */
+  padding: 10px 12px calc(var(--action-bar-height, 110px) + 16px);
 }
 
 .section-label {

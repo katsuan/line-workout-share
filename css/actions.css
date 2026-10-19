@@ -13,6 +13,10 @@
   border-top: 1px solid rgba(215, 224, 212, 0.96);
 }
 
+.action-bar [hidden] {
+  display: none;
+}
+
 .action-bar.has-debug-actions {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }

@@ -8,14 +8,14 @@ import {
   MENU_PRESETS,
   MUSCLE_FILTERS,
   STORAGE_KEYS
-} from "./constants.js?v=202610191256";
+} from "./constants.js?v=202610191300";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./theme.js?v=202610191256";
+} from "./theme.js?v=202610191300";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -23,7 +23,7 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./liff.js?v=202610191256";
+} from "./liff.js?v=202610191300";
 import {
   buildMenuFromWorkout,
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
@@ -47,21 +47,21 @@ import {
   sanitizeWorkout as sanitizeWorkoutModel,
   summarizeMenu,
   unpackWorkoutDraft
-} from "./workout.js?v=202610191256";
+} from "./workout.js?v=202610191300";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./repositories.js?v=202610191256";
-import { cssEscape, decodeBase64Url, encodeBase64Url, escapeHtml, formatLocaleMetric, generateId, getTodayLocalDate } from "./utils.js?v=202610191256";
+} from "./repositories.js?v=202610191300";
+import { cssEscape, decodeBase64Url, encodeBase64Url, escapeHtml, formatLocaleMetric, generateId, getTodayLocalDate } from "./utils.js?v=202610191300";
 import {
   fieldTemplate,
   renderActionButton,
   renderDisclosureToggle,
   renderModal,
   renderStartButton
-} from "./components.js?v=202610191256";
-import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610191256";
+} from "./components.js?v=202610191300";
+import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610191300";
 
 (function () {
 
@@ -188,6 +188,18 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610191256";
 
   function bindEvents() {
     document.addEventListener("click", handleClick);
+    // 下の送信バーの高さを測り、本文の下の余白にする（案内が出る・消えるたびに高さが変わる）
+    if (elements.actionBar) {
+      const syncActionBarHeight = function () {
+        document.documentElement.style.setProperty("--action-bar-height", elements.actionBar.offsetHeight + "px");
+      };
+      syncActionBarHeight();
+      if (typeof ResizeObserver === "function") {
+        new ResizeObserver(syncActionBarHeight).observe(elements.actionBar);
+      } else {
+        window.addEventListener("resize", syncActionBarHeight);
+      }
+    }
     // 月ごとのまとまり（<details>）の開け閉めを覚えておく（toggle は伝わらないので capture で受ける）
     elements.tabHistory.addEventListener("toggle", function (event) {
       const month = event.target && event.target.dataset ? event.target.dataset.historyMonth : "";
@@ -1285,6 +1297,8 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610191256";
     }
     const show = appState.liff.initialized && !appState.liff.shareAvailable && !isDebugModeEnabled();
     elements.lineHelp.hidden = !show;
+    // 送れないときは「LINEで共有」を出さない（押しても送れないので、案内のログイン／LINE アプリだけにする）
+    elements.shareButton.hidden = show;
     if (!show) {
       return;
     }

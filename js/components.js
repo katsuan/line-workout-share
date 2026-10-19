@@ -1,5 +1,5 @@
 // 画面の部品（HTML 文字列を返すだけ。状態は持たない）。どの画面でも同じ見た目・同じ書き方にそろえる
-import { escapeHtml } from "./utils.js?v=202610191256";
+import { escapeHtml } from "./utils.js?v=202610191300";
 
 export function renderAttributes(attrs) {
   return Object.keys(attrs || {})

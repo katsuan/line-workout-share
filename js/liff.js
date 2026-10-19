@@ -1,4 +1,4 @@
-import { APP_CONFIG, DEFAULT_USER, STORAGE_KEYS } from "./constants.js?v=202610191256";
+import { APP_CONFIG, DEFAULT_USER, STORAGE_KEYS } from "./constants.js?v=202610191300";
 
 export async function initLiff({ cachedProfile }) {
   const state = {
