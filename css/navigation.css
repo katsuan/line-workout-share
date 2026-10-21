@@ -38,7 +38,6 @@
   margin-bottom: 10px;
   padding: 6px;
   background: var(--primary-fade);
-  backdrop-filter: blur(12px);
   border: 1px solid var(--primary-outline);
   border-radius: 18px;
 }

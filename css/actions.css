@@ -8,8 +8,7 @@
   grid-template-columns: 1fr;
   gap: 8px;
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-  background: rgba(248, 251, 247, 0.97);
-  backdrop-filter: blur(14px);
+  background: rgb(248, 251, 247);
   border-top: 1px solid rgba(215, 224, 212, 0.96);
 }
 

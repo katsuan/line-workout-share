@@ -128,8 +128,7 @@ button {
   border: 1px solid var(--primary-outline);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
-  backdrop-filter: blur(8px);
-}
+  }
 
 .ranking-grid,
 .preview-grid {

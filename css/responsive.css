@@ -105,7 +105,7 @@
 
   .tile-field .text-input,
   .tile-field .number-input {
-    font-size: 0.94rem;
+    font-size: 16px; /* 16px より小さいと、iPhone が押したときに拡大して画面がずれる */
   }
 
   .compact-action-button {
