@@ -1,4 +1,4 @@
-import { APP_CONFIG, DEFAULT_USER, STORAGE_KEYS } from "./constants.js?v=202610221621";
+import { APP_CONFIG, DEFAULT_USER, STORAGE_KEYS } from "./constants.js?v=202610222220";
 
 export async function initLiff({ cachedProfile }) {
   const state = {
@@ -67,8 +67,11 @@ export function loadCachedProfile() {
     if (!raw) {
       return Object.assign({}, DEFAULT_USER);
     }
-    const parsed = JSON.parse(raw);
-    return Object.assign({}, DEFAULT_USER, parsed || {});
+    // 表示に使う名前・写真だけを読む（写真は https のものだけ）
+    const parsed = JSON.parse(raw) || {};
+    const displayName = typeof parsed.displayName === "string" && parsed.displayName.trim() ? parsed.displayName.slice(0, 40) : DEFAULT_USER.displayName;
+    const pictureUrl = typeof parsed.pictureUrl === "string" && /^https:\/\//.test(parsed.pictureUrl) ? parsed.pictureUrl : null;
+    return Object.assign({}, DEFAULT_USER, { displayName: displayName, pictureUrl: pictureUrl });
   } catch (error) {
     console.warn("Failed to load cached profile:", error);
     return Object.assign({}, DEFAULT_USER);
@@ -81,8 +84,9 @@ export function saveCachedProfile(profile) {
   }
   localStorage.setItem(
     STORAGE_KEYS.profile,
+    // LINE のユーザー ID は使わないので端末に残さない（形は前と同じ）
     JSON.stringify({
-      userId: profile.userId || null,
+      userId: null,
       displayName: profile.displayName || "anonymous",
       pictureUrl: profile.pictureUrl || null
     })

@@ -8,14 +8,14 @@ import {
   MENU_PRESETS,
   MUSCLE_FILTERS,
   STORAGE_KEYS
-} from "./constants.js?v=202610221621";
+} from "./constants.js?v=202610222220";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./theme.js?v=202610221621";
+} from "./theme.js?v=202610222220";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -23,7 +23,7 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./liff.js?v=202610221621";
+} from "./liff.js?v=202610222220";
 import {
   buildMenuFromWorkout,
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
@@ -46,13 +46,14 @@ import {
   resolveWorkoutTitle,
   sanitizeWorkout as sanitizeWorkoutModel,
   summarizeMenu,
+  TEXT_LIMITS,
   unpackWorkoutDraft
-} from "./workout.js?v=202610221621";
+} from "./workout.js?v=202610222220";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./repositories.js?v=202610221621";
+} from "./repositories.js?v=202610222220";
 import {
   cssEscape,
   decodeBase64Url,
@@ -62,7 +63,7 @@ import {
   formatLocaleMetric,
   generateId,
   getTodayLocalDate
-} from "./utils.js?v=202610221621";
+} from "./utils.js?v=202610222220";
 import {
   renderButton,
   renderChip,
@@ -71,8 +72,8 @@ import {
   renderField,
   renderSheet,
   renderStartButton
-} from "./components.js?v=202610221621";
-import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221621";
+} from "./components.js?v=202610222220";
+import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610222220";
 
 (function () {
 
@@ -643,7 +644,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221621";
       renderField({
         label: "ワークアウトタイトル",
         input:
-          '<input class="ls-input" data-field="title" type="text" placeholder="背中トレ など" value="' +
+          '<input class="ls-input" data-field="title" type="text" maxlength="' + TEXT_LIMITS.title + '" placeholder="背中トレ など" value="' +
           escapeHtml(workout.title || "") +
           '" />'
       }),
@@ -1578,7 +1579,9 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221621";
             input:
               '<input class="ls-input" data-exercise-field="name" data-exercise-id="' +
               escapeHtml(exercise.exerciseId) +
-              '" type="text" placeholder="ベンチプレス / スクワット など" value="' +
+              '" type="text" maxlength="' +
+              TEXT_LIMITS.name +
+              '" placeholder="ベンチプレス / スクワット など" value="' +
               escapeHtml(exercise.name || "") +
               '" enterkeyhint="done" />' +
               // セットを入れたのに名前がないとき：欄のすぐ下に赤い字で（送る前に気づけるように）
@@ -2156,6 +2159,10 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221621";
       "  </div>",
       exerciseBoxes
         .map(function (box) {
+          // 「ほか N 種目」（カードに入らなかった種目）
+          if (box.type !== "box") {
+            return '<div class="preview-exercise-note">' + escapeHtml(box.text || "") + "</div>";
+          }
           const headerBox = box.contents[0] || { contents: [] };
           const title = headerBox.contents[0] ? headerBox.contents[0].text : "";
           const summary = headerBox.contents[1] ? headerBox.contents[1].text : "";
@@ -2368,6 +2375,8 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221621";
       input:
         '<textarea class="ls-input memo-input" data-exercise-field="memo" data-exercise-id="' +
         escapeHtml(exercise.exerciseId) +
+        '" maxlength="' +
+        TEXT_LIMITS.memo +
         '" placeholder="フォームや調子のメモ">' +
         escapeHtml(exercise.memo || "") +
         "</textarea>"

@@ -6,7 +6,7 @@ import {
   MAX_EXERCISES_PER_BUBBLE,
   MAX_FLEX_UNITS_PER_BUBBLE,
   MAX_SETS_PER_FLEX_EXERCISE
-} from "./constants.js?v=202610221621";
+} from "./constants.js?v=202610222220";
 import {
   deepClone,
   formatFlexWeight,
@@ -18,7 +18,13 @@ import {
   roundNumber,
   toNullableNumber,
   truncateText
-} from "./utils.js?v=202610221621";
+} from "./utils.js?v=202610222220";
+
+// 文字の長さの上限（入力欄の maxlength・送るカード・リンクの draft で同じ）
+export const TEXT_LIMITS = { title: 40, name: 60, memo: 200, catalogId: 40, muscle: 20, displayName: 20, altText: 400 };
+// 重さ・回数の上限（リンクの draft から読むとき）
+const NUMBER_MAX = 9999;
+const MAX_FLEX_BUBBLES = 12;
 
 export function createEmptyWorkout() {
   const timestamp = new Date().toISOString();
@@ -185,13 +191,27 @@ export function buildWorkoutFlexMessage(workout, theme, resolveGroupKey, history
   const exerciseChunks = splitExercisesForFlexBubbles(calculatedWorkout.exercises);
   const activeTheme = theme || FLEX_THEME;
 
-  const bubbles = exerciseChunks.map(function (chunk, index) {
-    return buildWorkoutBubble(calculatedWorkout, chunk, index, exerciseChunks.length, activeTheme);
+  // LINE のカルーセルは 12 枚まで。入らない種目は、最後のカードに「ほか N 種目」と出す
+  const shownChunks = exerciseChunks.slice(0, MAX_FLEX_BUBBLES);
+  const hiddenCount = exerciseChunks.slice(MAX_FLEX_BUBBLES).reduce(function (sum, chunk) {
+    return sum + chunk.length;
+  }, 0);
+  const bubbles = shownChunks.map(function (chunk, index) {
+    return buildWorkoutBubble(calculatedWorkout, chunk, index, shownChunks.length, activeTheme);
   });
+  if (hiddenCount > 0) {
+    bubbles[bubbles.length - 1].body.contents.push({
+      type: "text",
+      text: "ほか " + hiddenCount + " 種目",
+      size: "xs",
+      color: "#5D6C5D",
+      margin: "sm"
+    });
+  }
 
   return {
     type: "flex",
-    altText: buildWorkoutAltText(calculatedWorkout),
+    altText: truncateText(buildWorkoutAltText(calculatedWorkout), TEXT_LIMITS.altText),
     contents:
       bubbles.length === 1
         ? bubbles[0]
@@ -246,7 +266,7 @@ function buildWorkoutBubble(workout, exercises, bubbleIndex, bubbleCount, theme)
       contents: [
         {
           type: "text",
-          text: workout.date || "-",
+          text: truncateText(workout.date, 20) || "-",
           color: "#ffffff",
           weight: "bold",
           size: "sm",
@@ -259,7 +279,7 @@ function buildWorkoutBubble(workout, exercises, bubbleIndex, bubbleCount, theme)
           ? [
               {
                 type: "text",
-                text: workout.user.displayName,
+                text: truncateText(workout.user.displayName, TEXT_LIMITS.displayName),
                 color: "#FDF3EA",
                 size: "xs",
                 align: "end",
@@ -272,7 +292,7 @@ function buildWorkoutBubble(workout, exercises, bubbleIndex, bubbleCount, theme)
     },
     {
       type: "text",
-      text: resolveWorkoutTitle(workout.title, workout.user),
+      text: truncateText(resolveWorkoutTitle(workout.title, workout.user), TEXT_LIMITS.title),
       color: "#ffffff",
       weight: "bold",
       size: "lg",
@@ -343,7 +363,7 @@ function buildExerciseBoxForFlex(exercise, theme) {
         contents: [
           {
             type: "text",
-            text: exercise.name,
+            text: truncateText(exercise.name, TEXT_LIMITS.name),
             weight: "bold",
             size: "sm",
             wrap: true,
@@ -680,28 +700,41 @@ export function packWorkoutDraft(workout) {
   return { t: workout.title || "", e: exercises.slice(0, 20) };
 }
 
+// リンク（?draft=）や端末から読む作りかけ。外から来た中身なので、形・長さ・数の範囲を確かめてから使う
 export function unpackWorkoutDraft(draft) {
-  if (!draft || !Array.isArray(draft.e) || !draft.e.length) {
+  if (!draft || typeof draft !== "object" || !Array.isArray(draft.e)) {
     return null;
   }
-  return createWorkoutFromMenu({
-    name: String(draft.t || ""),
-    exercises: draft.e.slice(0, 20).map(function (row) {
+  const text = function (v, max) {
+    return typeof v === "string" ? v.slice(0, max) : "";
+  };
+  // 0（自重・挑戦）も残す。数でない・範囲の外は空
+  const num = function (v) {
+    if (v === "" || v === null || typeof v === "boolean") return "";
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 && n <= NUMBER_MAX ? n : "";
+  };
+  const exercises = draft.e
+    .slice(0, 20)
+    .filter(Array.isArray)
+    .map(function (row) {
       const sets = Array.isArray(row[4]) ? row[4] : [];
       return {
-        name: String(row[0] || "").slice(0, 60),
-        catalogId: String(row[1] || ""),
-        primaryMuscle: String(row[2] || ""),
-        memo: String(row[3] || "").slice(0, 200),
+        name: text(row[0], TEXT_LIMITS.name),
+        catalogId: text(row[1], TEXT_LIMITS.catalogId),
+        primaryMuscle: text(row[2], TEXT_LIMITS.muscle),
+        memo: text(row[3], TEXT_LIMITS.memo),
         isCustom: row[5] === 1,
-        sets: sets.slice(0, 30).map(function (pair) {
-          // 0（自重・挑戦）も残す
-          const num = function (v) {
-            return v === "" || v === null || !Number.isFinite(Number(v)) ? "" : Number(v);
-          };
-          return { weight: num(pair[0]), reps: num(pair[1]) };
-        })
+        sets: sets
+          .slice(0, 30)
+          .filter(Array.isArray)
+          .map(function (pair) {
+            return { weight: num(pair[0]), reps: num(pair[1]) };
+          })
       };
-    })
-  });
+    });
+  if (!exercises.length) {
+    return null;
+  }
+  return createWorkoutFromMenu({ name: text(draft.t, TEXT_LIMITS.title), exercises: exercises });
 }
