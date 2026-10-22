@@ -8,14 +8,14 @@ import {
   MENU_PRESETS,
   MUSCLE_FILTERS,
   STORAGE_KEYS
-} from "./constants.js?v=202610221446";
+} from "./constants.js?v=202610221621";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./theme.js?v=202610221446";
+} from "./theme.js?v=202610221621";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -23,7 +23,7 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./liff.js?v=202610221446";
+} from "./liff.js?v=202610221621";
 import {
   buildMenuFromWorkout,
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
@@ -47,12 +47,12 @@ import {
   sanitizeWorkout as sanitizeWorkoutModel,
   summarizeMenu,
   unpackWorkoutDraft
-} from "./workout.js?v=202610221446";
+} from "./workout.js?v=202610221621";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./repositories.js?v=202610221446";
+} from "./repositories.js?v=202610221621";
 import {
   cssEscape,
   decodeBase64Url,
@@ -62,7 +62,7 @@ import {
   formatLocaleMetric,
   generateId,
   getTodayLocalDate
-} from "./utils.js?v=202610221446";
+} from "./utils.js?v=202610221621";
 import {
   renderButton,
   renderChip,
@@ -71,8 +71,8 @@ import {
   renderField,
   renderSheet,
   renderStartButton
-} from "./components.js?v=202610221446";
-import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
+} from "./components.js?v=202610221621";
+import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221621";
 
 (function () {
 
@@ -141,6 +141,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
     applyTheme(appState.theme.baseColor);
     appState.liff.profile = loadCachedProfile();
     appState.workout = createEmptyWorkout();
+    const resumed = restoreLocalDraft();
     appState.history = loadWorkoutHistory();
     appState.menus = MenuRepository.loadAll();
     syncWorkoutUser();
@@ -157,8 +158,10 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
     }
 
     const liffResult = await initLiff();
-    // ログインの行き来・LINE アプリへ移る前に入れていた記録を戻す
-    restoreCarriedDraft();
+    // ログインの行き来・LINE アプリへ移る前に入れていた記録を戻す（そちらがあれば、前回の続きより先）
+    if (!restoreCarriedDraft() && resumed) {
+      showResumed();
+    }
     if (!liffResult.ready) {
       notify(
         isDebugModeEnabled()
@@ -346,7 +349,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
     delete appState.ui.memoOpenExerciseIds[exerciseId];
     touchWorkout();
     renderWorkoutViews();
-    notify("🗑 " + (exercise && exercise.name ? "「" + exercise.name + "」" : "種目") + "を削除しました。", "info", undo);
+    notify("🗑 " + (exercise && exercise.name ? "「" + exercise.name + "」" : "種目") + "を消しました。", "info", undo);
   }
 
   function addSet(exerciseId) {
@@ -386,7 +389,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
     touchWorkout();
     renderInput();
     renderPreview();
-    notify("🗑 セットを削除しました。", "info", undo);
+    notify("🗑 セットを消しました。", "info", undo);
   }
 
   function applyCatalogToExercise(exercise, catalogId) {
@@ -460,19 +463,20 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
     const sanitizedWorkout = sanitizeWorkout(workout);
 
     if (!sanitizedWorkout.date) {
-      errors.push("日付を入力してください。");
-    }
-
-    if (!sanitizedWorkout.exercises.length) {
-      errors.push("共有対象になる種目とセットを1つ以上入力してください。");
+      errors.push("日付を入れると送れます。");
     }
 
     calculatedWorkout.exercises.forEach(function (exercise, index) {
       const hasValidSet = (exercise.sets || []).some(isFilledSet);
       if (hasValidSet && !(exercise.name || "").trim()) {
-        errors.push("種目" + (index + 1) + "の名前を入力してください。");
+        errors.push("種目" + (index + 1) + "の名前を入れると送れます。");
       }
     });
+
+    // 名前がないだけのときは、そちらの知らせだけにする
+    if (!sanitizedWorkout.exercises.length && !errors.length) {
+      errors.push("種目とセットを1つ以上入れると送れます。");
+    }
 
     return {
       valid: errors.length === 0,
@@ -536,6 +540,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
     if (!validation.valid) {
       notify(validation.errors.join(" "), "error");
       appState.activeTab = "input";
+      renderInput(); // 名前のない種目の下に、赤い字の知らせを出す
       renderShell();
       return;
     }
@@ -566,7 +571,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
           );
         }
       } else {
-        notify("LINE の外では送れません。下の「ログインして送る」か「LINEで開く」から送ってください。", "warn");
+        notify("LINE の外では送れません。下の「ログインして送る」か「LINE アプリで開く」から送れます。", "warn");
       }
       return;
     }
@@ -574,9 +579,21 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
     try {
       const result = await window.liff.shareTargetPicker([message]);
       if (result) {
-        notify("共有しました。", "info");
+        // 送った記録は、次に開いたときの「前回の続き」にしない
+        sentDraft = JSON.stringify(packWorkoutDraft(appState.workout));
+        keepLocalDraft();
+        // 送ったあと：続けて別のトークにも・閉じる・もう少し作る（Q キット）
+        if (window.LineShareUI && typeof window.LineShareUI.afterSent === "function") {
+          window.LineShareUI.afterSent({
+            resend: async function () {
+              return Boolean(await window.liff.shareTargetPicker([message]));
+            }
+          });
+        } else {
+          notify("送りました。", "info");
+        }
       } else {
-        notify("共有はキャンセルされました。入力内容と履歴は保持しています。", "warn");
+        notify("送るのをやめました。入れた記録は残っています。", "info");
       }
     } catch (error) {
       console.error("shareTargetPicker failed:", error);
@@ -587,7 +604,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
       notify(
         isDebugModeEnabled()
           ? "共有でエラーが発生しました。デバッグ用にFlex JSONプレビューへ切り替えています。"
-          : "共有でエラーが発生しました。時間をおいて再度お試しください。",
+          : "送れませんでした。少し待って、もう一度押してね。",
         "error"
       );
     }
@@ -642,6 +659,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
   }
 
   function renderPreview() {
+    keepLocalDraft(); // 入力が変わるたびに呼ばれるので、ここで作りかけを端末に残す
     const calculatedWorkout = calculateWorkout(appState.workout);
     const validation = validateWorkout(appState.workout);
     const shareableWorkout = validation.workout;
@@ -1288,7 +1306,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
       console.warn("Failed to keep draft:", error);
     }
     if (!loginWithLine()) {
-      notify("LINE のログインを始められませんでした。時間をおいてもう一度お試しください。", "warn");
+      notify("LINE のログインを始められませんでした。少し待って、もう一度押してね。", "warn");
     }
   }
 
@@ -1317,9 +1335,55 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
       appState.workout = workout;
       appState.ui.expandedExerciseId = workout.exercises[0] ? workout.exercises[0].exerciseId : "";
       notify("入力していた記録を戻しました。", "info");
+      return true;
     } catch (error) {
       console.warn("Failed to restore draft:", error);
     }
+    return false;
+  }
+
+  // ---- 作りかけ（送る前の記録）を端末に残し、次に開いたら続きから ----
+  // 送り終えた記録は残さない（sentDraft と同じ中身のあいだは消しておく）
+  let sentDraft = "";
+
+  function keepLocalDraft() {
+    const draft = packWorkoutDraft(appState.workout);
+    const text = draft ? JSON.stringify(draft) : "";
+    try {
+      if (!text || text === sentDraft) window.localStorage.removeItem(STORAGE_KEYS.draft);
+      else window.localStorage.setItem(STORAGE_KEYS.draft, text);
+    } catch (error) {
+      // 残せなくても使える
+    }
+  }
+
+  // 前回の作りかけがあれば入れる（入れたら true）
+  function restoreLocalDraft() {
+    try {
+      const workout = unpackWorkoutDraft(JSON.parse(window.localStorage.getItem(STORAGE_KEYS.draft) || "null"));
+      if (!workout) {
+        return false;
+      }
+      appState.workout = workout;
+      appState.ui.expandedExerciseId = workout.exercises[0] ? workout.exercises[0].exerciseId : "";
+      return true;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // 「前回の続きから開きました［新しく作る］」（新しく作っても「元に戻す」で戻せる）
+  function showResumed() {
+    if (!window.LineShareUI || typeof window.LineShareUI.toast !== "function") {
+      return;
+    }
+    window.LineShareUI.toast("前回の続きから開きました", {
+      actionLabel: "新しく作る",
+      ms: 8000,
+      onAction: function () {
+        replaceWorkout(createEmptyWorkout(), "新しく作りはじめました。");
+      }
+    });
   }
 
   function scrollToPanel(tab) {
@@ -1459,10 +1523,10 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
             })
           : "") +
         renderButton({
-          label: "削除",
+          label: "消す",
           className: "is-danger delete-pill",
           action: "remove-exercise",
-          title: "種目削除",
+          title: "種目を消す",
           disabled: !canRemoveExercise,
           attrs: {
             "data-exercise-id": exercise.exerciseId
@@ -1516,7 +1580,11 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
               escapeHtml(exercise.exerciseId) +
               '" type="text" placeholder="ベンチプレス / スクワット など" value="' +
               escapeHtml(exercise.name || "") +
-              '" />'
+              '" enterkeyhint="done" />' +
+              // セットを入れたのに名前がないとき：欄のすぐ下に赤い字で（送る前に気づけるように）
+              (!(exercise.name || "").trim() && (exercise.sets || []).some(isFilledSet)
+                ? '<p class="ls-hint is-error">種目名を入れると送れます</p>'
+                : "")
           })
         : "",
       '    <div class="sets-stack">',
@@ -1549,7 +1617,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
   }
 
   // 1セット分の行。スマホで押しやすいよう2段にし、kg・回数は −／＋ でも変えられる
-  //   上段: 何セット目・推定RM・削除  下段: kg と回数
+  //   上段: 何セット目・推定RM・消す  下段: kg と回数
   function renderSetRow(exercise, set, setIndex) {
     const exerciseId = exercise.exerciseId;
     const canRemoveSet = exercise.sets.length > 1;
@@ -1569,10 +1637,10 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
         escapeHtml(hasEstimated1rm(set) ? formatLocaleMetric(set.estimated1rm, "kg", 1) : "-") +
         "</strong></div>",
       renderButton({
-        label: "削除",
+        label: "消す",
         className: "is-danger delete-pill",
         action: "remove-set",
-        title: "このセットを削除",
+        title: "このセットを消す",
         disabled: !canRemoveSet,
         attrs: {
           "data-exercise-id": exerciseId,
@@ -1847,16 +1915,16 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
   function saveCurrentAsMenu() {
     const name = (appState.ui.menuName || "").trim();
     if (!name) {
-      notify("メニューの名前を入れてください。", "warn");
+      notify("メニューの名前を入れると保存できます。", "warn");
       return;
     }
     if (countNamedExercises(appState.workout) === 0) {
-      notify("種目を1つ以上選んでから保存してください。", "warn");
+      notify("種目を1つ以上選ぶと保存できます。", "warn");
       return;
     }
     const existing = MenuRepository.findByName(name);
     if (!existing && appState.menus.length >= MAX_MENUS) {
-      notify("メニューは " + MAX_MENUS + " 件まで保存できます。使わないものを削除してください。", "warn");
+      notify("メニューは " + MAX_MENUS + " 件まで保存できます。使わないものを消すと保存できます。", "warn");
       return;
     }
     // 同じ名前があれば確かめずに上書きし、「元に戻す」で前のメニューに戻せるようにする
@@ -1875,7 +1943,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
     appState.ui.menuModalOpen = false;
     replaceWorkout(
       createWorkoutFromMenu(menu),
-      "メニュー「" + menu.name + "」を入れました。重さ・回数を直して記録してください。"
+      "メニュー「" + menu.name + "」を入れました。重さ・回数を直して記録できます。"
     );
   }
 
@@ -1887,7 +1955,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
     const undo = undoMenuChange();
     appState.menus = MenuRepository.deleteById(menuId);
     renderInput();
-    notify("🗑 メニュー「" + menu.name + "」を削除しました。", "info", undo);
+    notify("🗑 メニュー「" + menu.name + "」を消しました。", "info", undo);
   }
 
   // いまのメニューの一覧を覚えておき、「元に戻す」で戻す関数を返す
@@ -1900,7 +1968,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
     };
   }
 
-  // 1行が1つのメニュー（Q キットの一覧の行）。押すと入る。保存したものだけ右に削除
+  // 1行が1つのメニュー（Q キットの一覧の行）。押すと入る。保存したものだけ右に 🗑（消す）
   function renderMenuRow(menu, deletable) {
     const names = (menu.exercises || [])
       .map(function (exercise) {
@@ -1915,7 +1983,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
       "    <small>" + escapeHtml(names) + "</small>",
       "  </button>",
       deletable
-        ? '  <button class="ls-icon-button" data-action="delete-menu" data-menu-id="' + menuId + '" type="button" aria-label="' + escapeHtml("「" + menu.name + "」を削除") + '">🗑</button>'
+        ? '  <button class="ls-icon-button" data-action="delete-menu" data-menu-id="' + menuId + '" type="button" aria-label="' + escapeHtml("「" + menu.name + "」を消す") + '">🗑</button>'
         : "",
       "</div>"
     ].join("");
@@ -2033,7 +2101,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
       '  <div class="history-card-body"' + (isOpen ? "" : " hidden") + ">",
       renderWorkoutExerciseStats(workout),
       '    <div class="history-actions history-actions-end">',
-      renderButton({ label: "削除", className: "is-danger history-action-button", action: "delete-history", attrs: idAttrs }),
+      renderButton({ label: "消す", className: "is-danger history-action-button", action: "delete-history", attrs: idAttrs }),
       "    </div>",
       "  </div>",
       "</article>"
@@ -2328,7 +2396,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
     appState.history = LocalStorageWorkoutRepository.deleteById(workoutId);
     renderHistory();
     renderShell();
-    notify("🗑 履歴を削除しました。", "info", function () {
+    notify("🗑 履歴を消しました。", "info", function () {
       appState.history = LocalStorageWorkoutRepository.replaceAll(saved);
       renderHistory();
       renderShell();

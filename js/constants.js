@@ -16,7 +16,9 @@ export const STORAGE_KEYS = {
   theme: "liff-workout-theme",
   profile: "liff-workout-profile",
   previewOpen: "liff-workout-preview-open",
-  menus: "liff-workout-menus"
+  menus: "liff-workout-menus",
+  // 作りかけの記録（送る前）。次に開いたら、その続きから
+  draft: "kiloq:draft"
 };
 
 export const MAX_HISTORY_ITEMS = 10;
