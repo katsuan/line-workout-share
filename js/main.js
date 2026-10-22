@@ -8,14 +8,14 @@ import {
   MENU_PRESETS,
   MUSCLE_FILTERS,
   STORAGE_KEYS
-} from "./constants.js?v=202610221110";
+} from "./constants.js?v=202610221446";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./theme.js?v=202610221110";
+} from "./theme.js?v=202610221446";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -23,7 +23,7 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./liff.js?v=202610221110";
+} from "./liff.js?v=202610221446";
 import {
   buildMenuFromWorkout,
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
@@ -47,12 +47,12 @@ import {
   sanitizeWorkout as sanitizeWorkoutModel,
   summarizeMenu,
   unpackWorkoutDraft
-} from "./workout.js?v=202610221110";
+} from "./workout.js?v=202610221446";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./repositories.js?v=202610221110";
+} from "./repositories.js?v=202610221446";
 import {
   cssEscape,
   decodeBase64Url,
@@ -62,7 +62,7 @@ import {
   formatLocaleMetric,
   generateId,
   getTodayLocalDate
-} from "./utils.js?v=202610221110";
+} from "./utils.js?v=202610221446";
 import {
   renderButton,
   renderChip,
@@ -71,8 +71,8 @@ import {
   renderField,
   renderSheet,
   renderStartButton
-} from "./components.js?v=202610221110";
-import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221110";
+} from "./components.js?v=202610221446";
+import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221446";
 
 (function () {
 
@@ -566,7 +566,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221110";
           );
         }
       } else {
-        notify("LINE の外では送れません。下の「ログインして送る」か「LINE アプリで開く」から送ってください。", "warn");
+        notify("LINE の外では送れません。下の「ログインして送る」か「LINEで開く」から送ってください。", "warn");
       }
       return;
     }

@@ -267,3 +267,28 @@ body:not(.ls-has-sendbar) .ls-toast {
 .ls-button.delete-pill:disabled {
   opacity: 0.35;
 }
+
+/* ---- 暗い表示（index.html の data-ls-dark="auto"。Q キットの色は ui.css が暗くする） ----
+ * 選んだ色から作る --kq-*（js/theme.js が :root に直接入れる）も、暗い背景に合うよう上書きする。
+ * 送る前のプレビュー（LINE のトークの見た目）は明るいまま。
+ */
+@media (prefers-color-scheme: dark) {
+  :root[data-ls-dark="auto"] {
+    --kq-tint: color-mix(in srgb, var(--ls-accent) 14%, #1c1b21) !important;
+    --kq-outline: color-mix(in srgb, var(--ls-accent) 40%, #3a3942) !important;
+    --kq-surface: color-mix(in srgb, var(--ls-accent) 12%, #1c1b21) !important;
+    --kq-surface-strong: color-mix(in srgb, var(--ls-accent) 6%, #1c1b21) !important;
+    --kq-bg-accent: color-mix(in srgb, var(--ls-accent) 28%, #121116) !important;
+    --kq-secondary: #9cc3d0;
+  }
+
+  :root[data-ls-dark="auto"] body {
+    background:
+      radial-gradient(circle at top right, var(--kq-bg-accent), transparent 28%),
+      var(--ls-bg);
+  }
+
+  :root[data-ls-dark="auto"] .memo-toggle-button {
+    background: rgba(255, 255, 255, 0.06);
+  }
+}
