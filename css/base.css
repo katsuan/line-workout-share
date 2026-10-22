@@ -1,251 +1,269 @@
+/*
+ * キロっく：色と字、ページ全体のこと。
+ * 部品（見出しの行・タブ・カード・チップ・入力欄・ボタン・開閉・シート・送る帯・トースト）はおくるんの Q キット
+ * （https://katsuan.github.io/line-share/shared/ui.css）。ここにはキロっくの色と字と、キロっくにしかない見た目だけを置く。
+ * 色は「表示設定」で変えられるので、js/theme.js が下の --ls-accent・--kq-* を選んだ色から作り直す（ここは初期色 #C96A2D の値）
+ */
 :root {
-  --bg: #f7f4ef;
-  --bg-accent: #f4ebe0;
-  --surface: #ffffff;
-  --surface-strong: #fbf8f3;
-  --text: #1f2a1f;
-  --muted: #5d6c5d;
-  --line: #e3d7ca;
-  --primary: #c96a2d;
-  --primary-dark: #8f4517;
-  --primary-soft: #f7dfcf;
-  --primary-tint: #fcf3ea;
-  --primary-line: #ddb38f;
-  --primary-outline: #edd7c7;
-  --primary-surface: #fff8f2;
-  --primary-surface-strong: #fcfefc;
-  --primary-fade: #f7f0e8;
-  --secondary: #264653;
-  --secondary-soft: #e7eef2;
-  --share: #06c755;
-  --share-dark: #05a847;
-  --danger: #d64545;
-  --warning: #d79a16;
-  --shadow: 0 18px 40px rgba(31, 42, 31, 0.08);
-  --radius-lg: 26px;
-  --radius-md: 20px;
-  --radius-sm: 14px;
-  --font-sans: "Avenir Next", "Hiragino Sans", "Yu Gothic", sans-serif;
-}
+  /* Q キットの色と字を、キロっくの色（#C96A2D）と字に */
+  --ls-accent: #c96a2d;
+  --ls-accent-strong: #aa4b0e;
+  --ls-accent-soft: #f2dbcd;
+  --ls-accent-ink: #8c2d00;
+  --ls-tabs-bg: #f1ddce;
+  --ls-bg: #f7f4ef;
+  --ls-surface-sub: #fbf8f3;
+  --ls-text: #1f2a1f;
+  --ls-subtext: #5d6c5d;
+  --ls-line: #e3d7ca;
+  --ls-line-strong: #d6c6b4;
+  --ls-danger: #c24141;
+  --ls-shadow: 0 18px 40px rgba(31, 42, 31, 0.08);
+  --ls-font: "Avenir Next", "Hiragino Sans", "Yu Gothic", sans-serif;
 
-* {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  margin: 0;
-  padding: 0;
-  background:
-    radial-gradient(circle at top right, var(--bg-accent), transparent 28%),
-    linear-gradient(180deg, #fdfbf8 0%, var(--bg) 42%, #f2ece4 100%);
-  color: var(--text);
-  font-family: var(--font-sans);
+  /* キロっくにしかない部品の色（種目カード・セット・プレビュー）。選んだ色に合わせて js/theme.js が変える */
+  --kq-tint: #faeadd;
+  --kq-outline: #deb89d;
+  --kq-surface: #fbeee3;
+  --kq-surface-strong: #f9f5f0;
+  --kq-bg-accent: #efdcc8;
+  --kq-secondary: #264653;
+  --kq-line-green: #06c755;
+  --kq-line-green-dark: #05a847;
 }
 
 body {
   min-height: 100vh;
+  background:
+    radial-gradient(circle at top right, var(--kq-bg-accent), transparent 28%),
+    linear-gradient(180deg, #fdfbf8 0%, var(--ls-bg) 42%, #f2ece4 100%);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-button,
-input,
-textarea {
-  font: inherit;
-}
-
-button {
-  cursor: pointer;
-}
-
+/* 下の送る帯の高さ（js が測って --action-bar-height に入れる）＋少しの余白。LINE の外の案内が出て帯が高くなっても最後まで見える */
 .app-shell {
-  max-width: 760px;
-  margin: 0 auto;
-  /* 下の送信バーの高さ（js が測って --action-bar-height に入れる）＋少しの余白。LINE の外の案内が出てバーが高くなっても最後まで見える */
-  padding: 10px 12px calc(var(--action-bar-height, 110px) + 16px);
+  padding: 8px 10px calc(var(--action-bar-height, 110px) + 16px);
 }
 
-.section-label {
-  margin: 0 0 6px;
-  color: var(--primary-dark);
-  font-size: 0.76rem;
+/* ---- 見出しの行（字の大きさはキロっくのまま） ---- */
+.ls-brand {
+  padding: 0 2px;
+}
+
+.ls-brand-name {
+  font-size: 1.25rem;
+  letter-spacing: 0.02em;
+}
+
+.ls-brand-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.ls-brand-copy {
+  margin: -4px 2px 10px;
+  color: var(--ls-accent);
+  font-size: 13px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+}
+
+/* ---- タブ（入力・履歴）。押すとそこまで動くだけなので、上に貼りつけない ---- */
+.tab-nav {
+  position: static;
+  margin-bottom: 10px;
+}
+
+.tab-nav .ls-tab {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 1px;
+  min-height: 40px;
+  padding: 6px 8px;
+  line-height: 1.1;
+}
+
+.tab-main {
+  font-size: 0.86rem;
+  font-weight: 650;
+}
+
+.tab-sub {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--ls-subtext);
+  font-size: 0.66rem;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tab-sub:empty {
+  visibility: hidden;
+}
+
+.tab-panels {
+  display: grid;
+  gap: 14px;
+}
+
+.tab-panel {
+  display: block;
+  scroll-margin-top: 12px;
+}
+
+/* ---- 送る帯：LINE で送るボタンは LINE の緑 ---- */
+.ls-send.is-line {
+  background: linear-gradient(135deg, var(--kq-line-green) 0%, var(--kq-line-green-dark) 100%);
+}
+
+.ls-send.is-line:active:not(:disabled) {
+  background: var(--kq-line-green-dark);
+}
+
+/* トーストは送る帯のすぐ上に（帯の高さは LINE の外の案内で変わる） */
+body:not(.ls-has-sendbar) .ls-toast {
+  bottom: calc(var(--action-bar-height, 110px) + 12px);
+}
+
+/* シート（メニュー）の中で消したときも「元に戻す」が見えるよう、トーストはシートより上に */
+.ls-toast {
+  z-index: 110;
+}
+
+/* ui.js が読めないときの知らせ（ふだんはトースト） */
+.status-fallback {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--action-bar-height, 110px) + 12px);
+  z-index: 30;
+  width: min(calc(100vw - 24px), 520px);
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--ls-radius-md);
+  background: rgba(32, 30, 44, 0.92);
+  color: #fff;
+  font-size: 0.9rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  transform: translateX(-50%);
 }
 
+/* 入力欄を押したときの影も、キロっくの色に（Q キットのままだと紫） */
+.ls-input:focus {
+  border-color: var(--ls-accent);
+  box-shadow: 0 0 0 3px var(--ls-accent-soft);
+}
+
+/* ---- 下から出るシート（表示設定・トレーニングメニュー）の見出しと「閉じる」 ---- */
+.sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sheet-close {
+  min-height: 36px;
+  padding: 0 14px;
+}
+
+.sheet-subtitle {
+  margin: 6px 0 -4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ls-line);
+  font-size: 0.95rem;
+}
+
+/* ---- 小さな共通の見た目 ---- */
 .panel-title {
   margin: 0;
   font-weight: 650;
 }
 
-.user-avatar-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  padding: 0;
-  border: 0;
-  border-radius: 999px;
-  background: transparent;
-  color: inherit;
-}
-
-.user-avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 999px;
-  background: var(--primary-soft);
-  color: var(--primary-dark);
-  overflow: hidden;
-  flex: 0 0 auto;
-  position: relative;
-}
-
-.user-avatar-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.user-avatar-fallback {
-  font-size: 0.9rem;
-  font-weight: 700;
-}
-
-.panel-card,
-.exercise-card,
-.history-card,
-.ranking-card,
-.preview-bubble,
-.summary-card {
-  background: var(--primary-surface);
-  border: 1px solid var(--primary-outline);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  }
-
-.ranking-grid,
-.preview-grid {
-  display: grid;
-  gap: 12px;
-}
-
-.stats-list {
-  display: grid;
-  gap: 8px;
-}
-
-.summary-card,
-.ranking-card {
-  padding: 14px 16px;
-}
-
-.summary-card-inline {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 12px;
-}
-
-.summary-card-main {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-  flex: 1;
-}
-
-.summary-name {
-  display: block;
-  color: var(--text);
-  font-size: 0.98rem;
-  font-weight: 650;
-  line-height: 1.2;
-}
-
-.summary-inline-meta {
-  display: block;
-  color: var(--text);
-  opacity: 0.7;
-  font-size: 0.8rem;
-  font-weight: 550;
-  line-height: 1.2;
-}
-
-.summary-value,
-.metric-value {
-  display: block;
-  font-size: 1.1rem;
-  font-weight: 700;
-}
-
-.summary-value-inline {
-  flex: 0 0 auto;
-  font-size: 0.98rem;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.status-panel {
-  display: none;
-  position: fixed;
-  left: 50%;
-  right: auto;
-  width: min(calc(100vw - 24px), 520px);
-  transform: translateX(-50%);
-  bottom: calc(84px + env(safe-area-inset-bottom));
-  z-index: 30;
-  padding: 0;
-  border-radius: var(--radius-md);
+.section-label {
+  margin: 0 0 6px;
+  color: var(--ls-accent-ink);
+  font-size: 0.76rem;
   font-weight: 600;
-  font-size: 0.9rem;
-  box-shadow: 0 12px 26px rgba(31, 42, 31, 0.12);
+  letter-spacing: 0.08em;
 }
 
-.status-panel.is-visible {
-  display: block;
-}
-
-.status-panel-inner {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 10px 12px;
-}
-
-.status-panel-text {
-  flex: 1;
-}
-
-.status-close-button {
-  min-width: 32px;
-  min-height: 32px;
-  border: 0;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.5);
-  color: inherit;
-  font-size: 0.92rem;
+/* 表示用のラベルは角の小さいタグ（押せるボタンはピル形） */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--ls-accent-soft);
+  color: var(--ls-accent-ink);
+  font-size: 0.78rem;
   font-weight: 700;
 }
 
-.status-panel.info {
-  background: var(--secondary-soft);
-  color: var(--secondary);
+/* 文字だけの控えめなボタン（サンプル・リセット） */
+.text-link-button {
+  min-height: 40px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--ls-subtext);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
 }
 
-.status-panel.warn {
-  background: rgba(215, 154, 22, 0.14);
-  color: #8a6207;
+.text-link-button.is-danger {
+  color: var(--ls-danger);
 }
 
-.status-panel.error {
-  background: rgba(214, 69, 69, 0.12);
-  color: #9b2e2e;
+/* 開閉の目印（送信プレビュー・種目・履歴）。見出しの行全体で開閉できるので、▾ は枠のない控えめな印にする */
+[data-disclosure-host] {
+  cursor: pointer;
 }
 
+.disclosure-toggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ls-accent-soft);
+  color: var(--ls-accent-ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.disclosure-chevron {
+  color: inherit;
+  font-size: 1rem;
+  transition: transform 0.15s ease;
+}
+
+.disclosure-toggle.is-open .disclosure-chevron {
+  transform: rotate(180deg);
+}
+
+/* 消すボタン（種目・セット）：主張しすぎない小さなピル */
+.ls-button.delete-pill {
+  flex: 0 0 auto;
+  min-height: 30px;
+  padding: 0 12px;
+  border-color: rgba(214, 69, 69, 0.35);
+  background: transparent;
+  font-size: 0.78rem;
+  line-height: 1;
+}
+
+.ls-button.delete-pill:disabled {
+  opacity: 0.35;
+}

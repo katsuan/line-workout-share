@@ -1,5 +1,5 @@
-// 画面の部品（HTML 文字列を返すだけ。状態は持たない）。どの画面でも同じ見た目・同じ書き方にそろえる
-import { escapeHtml } from "./utils.js?v=202610211352";
+// 画面の部品（HTML 文字列を返すだけ。状態は持たない）。見た目はおくるんの Q キット（ls-*）にそろえる
+import { escapeHtml } from "./utils.js?v=202610221110";
 
 export function renderAttributes(attrs) {
   return Object.keys(attrs || {})
@@ -9,7 +9,7 @@ export function renderAttributes(attrs) {
     .join("");
 }
 
-// 開閉できるところ（送信プレビュー・集計・種目・履歴）は、すべてこの ▾ ボタンでそろえる（文字は読み上げ用）
+// 開閉できるところ（送信プレビュー・種目・履歴のカード）は、この ▾ ボタンでそろえる（文字は読み上げ用）
 export function renderDisclosureToggle(options) {
   const isOpen = Boolean(options.isOpen);
   return (
@@ -30,28 +30,48 @@ export function renderDisclosureToggle(options) {
   );
 }
 
-export function renderActionButton(options) {
-  const isDisabled = Boolean(options.disabled);
-  const title = escapeHtml(options.title || options.label);
+// Q キットのボタン。options: { label, action, className（"is-danger" など足すクラス）, title（読み上げ・長押しの説明）, disabled, attrs }
+export function renderButton(options) {
+  const title = options.title ? ' aria-label="' + escapeHtml(options.title) + '" title="' + escapeHtml(options.title) + '"' : "";
   return (
-    '<button class="' +
-    escapeHtml(options.variant || "outline-button") +
-    (isDisabled ? " is-disabled" : "") +
-    '" aria-label="' +
-    title +
-    '" title="' +
-    title +
+    '<button class="ls-button' +
+    (options.className ? " " + escapeHtml(options.className) : "") +
     '" data-action="' +
     escapeHtml(options.action || "") +
     '"' +
+    title +
     renderAttributes(options.attrs) +
-    (isDisabled ? " disabled" : "") +
+    (options.disabled ? " disabled" : "") +
     ' type="button">' +
-    '<span class="action-label">' +
     escapeHtml(options.label || "") +
-    "</span>" +
-    (options.icon ? '<span class="action-icon" aria-hidden="true">' + escapeHtml(options.icon) + "</span>" : "") +
     "</button>"
+  );
+}
+
+// Q キットのチップ（選ぶもの）。pressed を渡すと「選んでいる」（aria-pressed）になる
+export function renderChip(options) {
+  return (
+    '<button class="ls-chip' +
+    (options.className ? " " + escapeHtml(options.className) : "") +
+    '" data-action="' +
+    escapeHtml(options.action) +
+    '"' +
+    (options.pressed === undefined ? "" : ' aria-pressed="' + String(Boolean(options.pressed)) + '"') +
+    renderAttributes(options.attrs) +
+    ' type="button">' +
+    escapeHtml(options.label) +
+    "</button>"
+  );
+}
+
+// まだ何もないとき（Q キットの ls-empty。白いカードの中に、絵文字と一言）
+export function renderEmpty(icon, text) {
+  return (
+    '<div class="ls-panel"><div class="ls-empty"><span class="ls-empty-icon" aria-hidden="true">' +
+    escapeHtml(icon) +
+    "</span>" +
+    escapeHtml(text) +
+    "</div></div>"
   );
 }
 
@@ -73,31 +93,30 @@ export function renderStartButton(options) {
   );
 }
 
-// options.input は組み立て済みの HTML（エスケープは呼ぶ側）
-export function fieldTemplate(options) {
+// Q キットの入力欄（見出し＋欄）。options.input は組み立て済みの HTML（エスケープは呼ぶ側）
+export function renderField(options) {
   return [
-    '<label class="field-group' + (options.className ? " " + escapeHtml(options.className) : "") + '">',
-    '  <span class="field-label">' + escapeHtml(options.label) + "</span>",
+    '<label class="ls-field' + (options.className ? " " + escapeHtml(options.className) : "") + '">',
+    '  <span class="ls-label">' + escapeHtml(options.label) + "</span>",
     "  " + options.input,
     "</label>"
   ].join("");
 }
 
-// 画面下から出るシート（表示設定・トレーニングメニュー）。外側か「閉じる」で closeAction を送る
+// 画面下から出るシート（Q キットの ls-sheet。表示設定・トレーニングメニュー）。外側か「閉じる」で closeAction を送る
 //   options: { label（読み上げ用の名前）, title（見出し）, closeAction, className, body（中身の HTML） }
-export function renderModal(options) {
+export function renderSheet(options) {
   const closeAction = escapeHtml(options.closeAction);
   return [
-    '<div class="settings-modal-backdrop">',
-    '  <button class="settings-modal-scrim" data-action="' + closeAction + '" type="button" aria-label="閉じる"></button>',
-    '  <section class="settings-modal' +
+    '<div class="ls-sheet" data-sheet-close="' + closeAction + '">',
+    '  <section class="ls-sheet-card' +
       (options.className ? " " + escapeHtml(options.className) : "") +
       '" role="dialog" aria-modal="true" aria-label="' +
       escapeHtml(options.label) +
       '">',
-    '    <div class="settings-modal-head">',
-    '      <h3 class="panel-title">' + escapeHtml(options.title) + "</h3>",
-    '      <button class="ghost-button modal-close-button" data-action="' + closeAction + '" type="button">閉じる</button>',
+    '    <div class="sheet-head">',
+    '      <h3 class="ls-sheet-title">' + escapeHtml(options.title) + "</h3>",
+    '      <button class="ls-button sheet-close" data-action="' + closeAction + '" type="button">閉じる</button>',
     "    </div>",
     options.body,
     "  </section>",

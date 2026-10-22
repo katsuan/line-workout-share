@@ -8,14 +8,14 @@ import {
   MENU_PRESETS,
   MUSCLE_FILTERS,
   STORAGE_KEYS
-} from "./constants.js?v=202610211352";
+} from "./constants.js?v=202610221110";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./theme.js?v=202610211352";
+} from "./theme.js?v=202610221110";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -23,7 +23,7 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./liff.js?v=202610211352";
+} from "./liff.js?v=202610221110";
 import {
   buildMenuFromWorkout,
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
@@ -47,21 +47,32 @@ import {
   sanitizeWorkout as sanitizeWorkoutModel,
   summarizeMenu,
   unpackWorkoutDraft
-} from "./workout.js?v=202610211352";
+} from "./workout.js?v=202610221110";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./repositories.js?v=202610211352";
-import { cssEscape, decodeBase64Url, encodeBase64Url, escapeHtml, formatLocaleMetric, generateId, getTodayLocalDate } from "./utils.js?v=202610211352";
+} from "./repositories.js?v=202610221110";
 import {
-  fieldTemplate,
-  renderActionButton,
+  cssEscape,
+  decodeBase64Url,
+  deepClone,
+  encodeBase64Url,
+  escapeHtml,
+  formatLocaleMetric,
+  generateId,
+  getTodayLocalDate
+} from "./utils.js?v=202610221110";
+import {
+  renderButton,
+  renderChip,
   renderDisclosureToggle,
-  renderModal,
+  renderEmpty,
+  renderField,
+  renderSheet,
   renderStartButton
-} from "./components.js?v=202610211352";
-import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
+} from "./components.js?v=202610221110";
+import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610221110";
 
 (function () {
 
@@ -72,10 +83,6 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
     rankingData: null,
     history: [],
     menus: [],
-    status: {
-      message: "",
-      type: "info"
-    },
     ui: {
       openJsonPreview: false,
       previewOpen: loadPreviewOpen(),
@@ -102,8 +109,6 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
       error: null
     }
   };
-
-  let statusTimerId = 0;
 
   const elements = {};
 
@@ -155,7 +160,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
     // ログインの行き来・LINE アプリへ移る前に入れていた記録を戻す
     restoreCarriedDraft();
     if (!liffResult.ready) {
-      setStatus(
+      notify(
         isDebugModeEnabled()
           ? "共有機能を使えないため、プレビュー中心で起動しました。デバッグ用のJSON確認は利用できます。"
           : "LINE とつながらないため、送る前の確認だけできます。",
@@ -170,9 +175,9 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
   }
 
   function cacheElements() {
-    elements.statusPanel = document.getElementById("status-panel");
+    elements.statusFallback = document.getElementById("status-fallback");
     elements.tabNav = document.getElementById("tab-nav");
-    elements.tabButtons = Array.from(document.querySelectorAll(".tab-button"));
+    elements.tabButtons = Array.from(elements.tabNav.querySelectorAll("[data-tab]"));
     elements.tabInput = document.getElementById("tab-input");
     elements.tabPreview = document.getElementById("tab-preview");
     elements.tabHistory = document.getElementById("tab-history");
@@ -200,17 +205,27 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
         window.addEventListener("resize", syncActionBarHeight);
       }
     }
-    // 月ごとのまとまり（<details>）の開け閉めを覚えておく（toggle は伝わらないので capture で受ける）
-    elements.tabHistory.addEventListener("toggle", function (event) {
-      const month = event.target && event.target.dataset ? event.target.dataset.historyMonth : "";
-      if (month) {
-        appState.ui.openHistoryMonths[month] = event.target.open;
-      }
-    }, true);
+    // 開閉（<details> の ls-fold）の開け閉めを覚えておき、描き直しても戻らないようにする（toggle は伝わらないので capture で受ける）
+    document.addEventListener("toggle", rememberFoldState, true);
     document.addEventListener("input", handleInput);
     document.addEventListener("change", handleInput);
     window.addEventListener("scroll", syncActiveTabToScroll, { passive: true });
     window.addEventListener("resize", syncActiveTabToScroll);
+  }
+
+  // data-fold="metrics"（この記録の集計）・"json"（デバッグ）・data-history-month（履歴の月）
+  function rememberFoldState(event) {
+    const fold = event.target;
+    if (!fold || !fold.dataset) {
+      return;
+    }
+    if (fold.dataset.historyMonth) {
+      appState.ui.openHistoryMonths[fold.dataset.historyMonth] = fold.open;
+    } else if (fold.dataset.fold === "metrics") {
+      appState.ui.metricsOpen = fold.open;
+    } else if (fold.dataset.fold === "json") {
+      appState.ui.openJsonPreview = fold.open;
+    }
   }
 
   async function initLiff() {
@@ -311,13 +326,10 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
     scrollToExerciseCard(exercise.exerciseId);
   }
 
+  // 消すときは確かめずにすぐ消し、トーストの「元に戻す」で戻せるようにする（Q のツール共通）
   function removeExercise(exerciseId) {
-    if (appState.workout.exercises.length > 1) {
-      const shouldRemove = window.confirm("この種目を削除しますか？");
-      if (!shouldRemove) {
-        return;
-      }
-    }
+    const exercise = findExercise(exerciseId);
+    const undo = undoInputChange();
     if (appState.workout.exercises.length === 1) {
       appState.workout.exercises = [createEmptyExercise()];
       appState.ui.expandedExerciseId = appState.workout.exercises[0].exerciseId;
@@ -334,6 +346,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
     delete appState.ui.memoOpenExerciseIds[exerciseId];
     touchWorkout();
     renderWorkoutViews();
+    notify("🗑 " + (exercise && exercise.name ? "「" + exercise.name + "」" : "種目") + "を削除しました。", "info", undo);
   }
 
   function addSet(exerciseId) {
@@ -361,13 +374,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
       return;
     }
 
-    if (exercise.sets.length > 1) {
-      const shouldRemove = window.confirm("このセットを削除しますか？");
-      if (!shouldRemove) {
-        return;
-      }
-    }
-
+    const undo = undoInputChange();
     if (exercise.sets.length === 1) {
       exercise.sets = [createEmptySet()];
     } else {
@@ -379,6 +386,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
     touchWorkout();
     renderInput();
     renderPreview();
+    notify("🗑 セットを削除しました。", "info", undo);
   }
 
   function applyCatalogToExercise(exercise, catalogId) {
@@ -489,28 +497,35 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
     return LocalStorageWorkoutRepository.loadAll();
   }
 
-  // 入力中の内容を別のもの（履歴・メニュー・サンプル・空）に入れ替える。最初の種目を開いて入力タブへ
+  // いまの入力を覚えておき、「元に戻す」で戻す関数を返す（消す・入れ替える前に呼ぶ）
+  function undoInputChange() {
+    const saved = deepClone(appState.workout);
+    const savedExpandedId = appState.ui.expandedExerciseId;
+    return function () {
+      appState.workout = saved;
+      appState.ui.expandedExerciseId = savedExpandedId;
+      appState.activeTab = "input";
+      renderWorkoutViews();
+      notify("元に戻しました。", "info");
+    };
+  }
+
+  // 入力中の内容を別のもの（履歴・メニュー・サンプル・空）に入れ替える。最初の種目を開いて入力タブへ。
+  // 種目を入力していたときは、確かめる代わりにトーストの「元に戻す」で前の入力に戻せる
   function replaceWorkout(workout, message) {
+    const undo = countNamedExercises(appState.workout) > 0 ? undoInputChange() : null;
     appState.workout = workout;
     syncWorkoutUser();
     appState.ui.expandedExerciseId = workout.exercises[0] ? workout.exercises[0].exerciseId : "";
     appState.activeTab = "input";
     renderWorkoutViews();
-    setStatus(message, "info");
-  }
-
-  // 種目を入力しているときだけ、置き換えてよいか確かめる
-  function confirmReplaceInput(question) {
-    return countNamedExercises(appState.workout) === 0 || window.confirm(question);
+    notify(message, "info", undo);
   }
 
   function restoreWorkout(workoutId) {
     const restored = LocalStorageWorkoutRepository.findById(workoutId);
     if (!restored) {
-      setStatus("選択した履歴が見つかりませんでした。", "warn");
-      return;
-    }
-    if (!confirmReplaceInput("今の入力内容を、この履歴で置き換えますか？")) {
+      notify("選択した履歴が見つかりませんでした。", "warn");
       return;
     }
     replaceWorkout(hydrateWorkout(restored), "履歴を入力フォームへ戻しました。");
@@ -519,7 +534,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
   async function shareWorkout(workout) {
     const validation = validateWorkout(workout);
     if (!validation.valid) {
-      setStatus(validation.errors.join(" "), "error");
+      notify(validation.errors.join(" "), "error");
       appState.activeTab = "input";
       renderShell();
       return;
@@ -540,18 +555,18 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
       if (isDebugModeEnabled()) {
         const copied = await copyText(JSON.stringify(message, null, 2));
         if (copied) {
-          setStatus(
+          notify(
             "shareTargetPicker が使えないため、デバッグ用に Flex JSON をコピーしました。",
             "warn"
           );
         } else {
-          setStatus(
+          notify(
             "shareTargetPicker が使えないため、デバッグ用に Flex JSON プレビューを表示しています。",
             "warn"
           );
         }
       } else {
-        setStatus("LINE の外では送れません。下の「ログインして送る」か「LINE アプリで開く」から送ってください。", "warn");
+        notify("LINE の外では送れません。下の「ログインして送る」か「LINE アプリで開く」から送ってください。", "warn");
       }
       return;
     }
@@ -559,9 +574,9 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
     try {
       const result = await window.liff.shareTargetPicker([message]);
       if (result) {
-        setStatus("共有しました。", "info");
+        notify("共有しました。", "info");
       } else {
-        setStatus("共有はキャンセルされました。入力内容と履歴は保持しています。", "warn");
+        notify("共有はキャンセルされました。入力内容と履歴は保持しています。", "warn");
       }
     } catch (error) {
       console.error("shareTargetPicker failed:", error);
@@ -569,7 +584,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
       appState.ui.openJsonPreview = isDebugModeEnabled();
       renderShell();
       renderPreview();
-      setStatus(
+      notify(
         isDebugModeEnabled()
           ? "共有でエラーが発生しました。デバッグ用にFlex JSONプレビューへ切り替えています。"
           : "共有でエラーが発生しました。時間をおいて再度お試しください。",
@@ -605,14 +620,13 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
       '    <h2 class="panel-title">記録入力</h2>',
       "  </div>",
       renderInputStartActions(),
-      renderSettingsModal(),
-      renderMenuModal(),
-      '  <section class="panel-card input-card workout-meta-card" aria-label="ワークアウトタイトル">',
-      fieldTemplate({
+      renderSettingsSheet(),
+      renderMenuSheet(),
+      '  <section class="ls-panel" aria-label="ワークアウトタイトル">',
+      renderField({
         label: "ワークアウトタイトル",
-        className: "tile-field",
         input:
-          '<input class="text-input" aria-label="ワークアウトタイトル" data-field="title" type="text" placeholder="背中トレ など" value="' +
+          '<input class="ls-input" data-field="title" type="text" placeholder="背中トレ など" value="' +
           escapeHtml(workout.title || "") +
           '" />'
       }),
@@ -656,17 +670,17 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
       "  </section>",
       isOpen ? renderExerciseMetrics(calculatedWorkout) : "",
       isDebugModeEnabled()
-        ? '<section class="panel-card">' +
-        '  <details class="json-accordion" ' +
-        (appState.ui.openJsonPreview ? "open" : "") +
+        ? '<details class="ls-fold" data-fold="json"' +
+        (appState.ui.openJsonPreview ? " open" : "") +
         ">" +
-        "    <summary>Flex JSON プレビュー</summary>" +
-        '    <p class="json-hint">デバッグ用のFlex JSON確認です。</p>' +
+        "  <summary>Flex JSON プレビュー</summary>" +
+        '  <div class="ls-fold-body">' +
+        '    <p class="ls-hint">デバッグ用のFlex JSON確認です。</p>' +
         '    <pre class="json-preview">' +
         escapeHtml(JSON.stringify(flexMessage, null, 2)) +
         "</pre>" +
-        "  </details>" +
-        "</section>"
+        "  </div>" +
+        "</details>"
         : "",
       "</div>"
     ].join("");
@@ -677,14 +691,12 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
 
   function renderHistory() {
     if (!FEATURE_FLAGS.enableLocalHistory) {
-      elements.tabHistory.innerHTML =
-        '<div class="empty-state">localStorage 履歴は無効化されています。config.js の feature flag で切り替えできます。</div>';
+      elements.tabHistory.innerHTML = renderEmpty("⚙️", "localStorage 履歴は無効化されています。config.js の feature flag で切り替えできます。");
       return;
     }
 
     if (!appState.history.length) {
-      elements.tabHistory.innerHTML =
-        '<div class="empty-state">まだ履歴がありません。共有後にここへ表示されます。</div>';
+      elements.tabHistory.innerHTML = renderEmpty("🕘", "まだ履歴がありません。共有後にここへ表示されます。");
       return;
     }
 
@@ -706,34 +718,31 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
     const html = [
       '<div class="history-tools">',
       '  <p class="history-tools-count">' + escapeHtml(String(appState.history.length)) + "件の記録</p>",
-      renderActionButton({ label: "⬇ 記録をダウンロード", variant: "pill-button history-download-button", action: "download-history" }),
+      renderButton({ label: "⬇ 記録をダウンロード", action: "download-history" }),
       "</div>",
+      '<div class="ls-folds">',
       months
         .map(function (key, index) {
           const list = byMonth[key];
           const stored = appState.ui.openHistoryMonths[key];
           const isOpen = stored === undefined ? index === 0 : stored;
           return [
-            '<details class="history-month" data-history-month="' + escapeHtml(key) + '"' + (isOpen ? " open" : "") + ">",
-            '  <summary class="history-month-head">',
+            '<details class="ls-fold" data-history-month="' + escapeHtml(key) + '"' + (isOpen ? " open" : "") + ">",
+            "  <summary>",
             '    <span class="history-month-title">' + escapeHtml(historyMonthLabel(key)) + "</span>",
-            '    <span class="history-month-meta">' + escapeHtml(String(list.length)) + "回</span>",
+            '    <span class="ls-fold-meta">' + escapeHtml(String(list.length)) + "回</span>",
             "  </summary>",
-            '  <div class="history-stack">',
-            list.map(renderHistoryCard).join(""),
-            "  </div>",
-            '  <div class="history-month-tools">',
-            renderActionButton({
-              label: "⬇ この月をダウンロード",
-              variant: "pill-button history-download-button",
-              action: "download-history",
-              attrs: { "data-month": key }
-            }),
+            '  <div class="ls-fold-body">',
+            '    <div class="history-stack">' + list.map(renderHistoryCard).join("") + "</div>",
+            '    <div class="history-month-tools">',
+            renderButton({ label: "⬇ この月をダウンロード", action: "download-history", attrs: { "data-month": key } }),
+            "    </div>",
             "  </div>",
             "</details>"
           ].join("");
         })
-        .join("")
+        .join(""),
+      "</div>"
     ].join("");
 
     elements.tabHistory.innerHTML = html;
@@ -794,7 +803,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
         })
       : appState.history;
     if (!list.length) {
-      setStatus("ダウンロードできる記録がありません。", "warn");
+      notify("ダウンロードできる記録がありません。", "warn");
       return;
     }
     const csv = buildHistoryCsv(list);
@@ -807,7 +816,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
       try {
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({ files: [file], title: name });
-          setStatus("記録を共有メニューに渡しました（ファイルに保存できます）。", "info");
+          notify("記録を共有メニューに渡しました（ファイルに保存できます）。", "info");
           return;
         }
       } catch (error) {
@@ -815,9 +824,9 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
       }
       try {
         await navigator.clipboard.writeText(csv);
-        setStatus("LINE の中では保存できないので、記録（CSV）をコピーしました。メモやスプレッドシートに貼り付けてください。", "info");
+        notify("LINE の中では保存できないので、記録（CSV）をコピーしました。メモやスプレッドシートに貼り付けてください。", "info");
       } catch (error) {
-        setStatus("ダウンロードできませんでした。ブラウザで開くと保存できます。", "warn");
+        notify("ダウンロードできませんでした。ブラウザで開くと保存できます。", "warn");
       }
       return;
     }
@@ -832,7 +841,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
     setTimeout(function () {
       URL.revokeObjectURL(url);
     }, 1000);
-    setStatus(name + " をダウンロードしました。", "info");
+    notify(name + " をダウンロードしました。", "info");
   }
 
   function renderRanking() {
@@ -841,30 +850,32 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
     }
 
     if (!appState.rankingData) {
-      elements.tabRanking.innerHTML = '<div class="empty-state">ランキングを読み込み中です。</div>';
+      elements.tabRanking.innerHTML = renderEmpty("⏳", "ランキングを読み込み中です。");
       return;
     }
 
     const periodData = appState.rankingData[appState.rankingPeriod];
     const html = [
-      '<section class="panel-card">',
-      '  <div class="panel-head stats-head">',
-      "    <div>",
-      '      <p class="section-label">Ranking Mock</p>',
-      '      <h2 class="panel-title">ランキングタブ</h2>',
-      "      <p>初期実装はモック表示です。将来は API アダプタへ差し替えできます。</p>",
-      "    </div>",
-      '    <span class="badge">' +
-      escapeHtml(appState.rankingPeriod === "week" ? "今週" : "今月") +
-      "</span>",
+      '<section class="ls-panel">',
+      '  <div class="ls-panel-head">',
+      '    <p class="section-label">Ranking Mock</p>',
+      '    <h2 class="ls-panel-title">ランキングタブ</h2>',
+      '    <p class="ls-hint">初期実装はモック表示です。将来は API アダプタへ差し替えできます。</p>',
       "  </div>",
-      '  <div class="ranking-tabs">',
-      '    <button class="ranking-period-button ' +
-      (appState.rankingPeriod === "week" ? "is-active" : "") +
-      '" data-action="change-ranking-period" data-period="week" type="button">今週</button>',
-      '    <button class="ranking-period-button ' +
-      (appState.rankingPeriod === "month" ? "is-active" : "") +
-      '" data-action="change-ranking-period" data-period="month" type="button">今月</button>',
+      '  <div class="ls-chips">',
+      [
+        { period: "week", label: "今週" },
+        { period: "month", label: "今月" }
+      ]
+        .map(function (item) {
+          return renderChip({
+            label: item.label,
+            action: "change-ranking-period",
+            pressed: appState.rankingPeriod === item.period,
+            attrs: { "data-period": item.period }
+          });
+        })
+        .join(""),
       "  </div>",
       '  <div class="ranking-grid">',
       renderRankingCard("推定1RMランキング", periodData.estimated1rm, "kg"),
@@ -905,6 +916,12 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
   function handleClick(event) {
     const button = event.target.closest("button");
     if (!button) {
+      // シートの外側（暗いところ）を押したら閉じる
+      const sheetClose = event.target.getAttribute && event.target.getAttribute("data-sheet-close");
+      if (sheetClose && CLICK_ACTIONS[sheetClose]) {
+        CLICK_ACTIONS[sheetClose]({}, event.target);
+        return;
+      }
       // 開閉できる見出しは、▾ だけでなく行のどこを押しても開閉する
       const host = event.target.closest("[data-disclosure-host]");
       const toggle = host && !event.target.closest("input, textarea, select, label, a")
@@ -916,7 +933,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
       return;
     }
 
-    if (button.matches(".tab-button")) {
+    if (button.parentElement === elements.tabNav) {
       setActiveTab(button.getAttribute("data-tab"));
       return;
     }
@@ -942,15 +959,8 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
     "line-login": function () {
       startLineLogin();
     },
-    "close-status": function () {
-      clearStatus();
-    },
     "step-set": function (data, button) {
       stepSetValue(button);
-    },
-    "toggle-metrics": function () {
-      appState.ui.metricsOpen = !appState.ui.metricsOpen;
-      renderPreview();
     },
     "toggle-preview": function () {
       appState.ui.previewOpen = !appState.ui.previewOpen;
@@ -1117,22 +1127,16 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
       appState.activeTab = "input";
     }
 
-    renderStatus();
     renderTabButtonLabels();
 
     // 送信プレビューは「入力」の一部として扱う
     const navTab = appState.activeTab === "preview" ? "input" : appState.activeTab;
     elements.tabButtons.forEach(function (button) {
-      const isActive = button.getAttribute("data-tab") === navTab;
-      button.classList.toggle("is-active", isActive);
+      button.setAttribute("aria-selected", String(button.getAttribute("data-tab") === navTab));
     });
 
     if (elements.tabRankingButton) {
       elements.tabRankingButton.hidden = !isRankingEnabled();
-      elements.tabRankingButton.style.display = isRankingEnabled() ? "" : "none";
-    }
-    if (elements.actionBar) {
-      elements.actionBar.classList.toggle("has-debug-actions", isDebugModeEnabled());
     }
 
     setPanelVisibility("input", elements.tabInput);
@@ -1164,16 +1168,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
   }
 
   function renderTabButtonLabel(main, sub) {
-    return (
-      '<span class="tab-button-main">' +
-      escapeHtml(main) +
-      "</span>" +
-      '<span class="tab-button-sub' +
-      (sub ? "" : " is-empty") +
-      '">' +
-      escapeHtml(sub || "") +
-      "</span>"
-    );
+    return '<span class="tab-main">' + escapeHtml(main) + '</span><span class="tab-sub">' + escapeHtml(sub || "") + "</span>";
   }
 
   // タブ → 描く関数・パネルの要素（知らないタブは入力）
@@ -1198,47 +1193,23 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
     return panels[tab] || elements.tabInput;
   }
 
-  function renderStatus() {
-    if (!appState.status.message) {
-      elements.statusPanel.className = "status-panel";
-      elements.statusPanel.innerHTML = "";
+  // 知らせは Q キットのトースト（送る帯の上に数秒）。気をつけてほしいもの（warn・error）は長めに出す。
+  // undo を渡すと「元に戻す」ボタンが付く。ui.js が読めないときは、ページの下の文字で知らせる
+  const NOTICE_MS = { info: 3000, warn: 8000, error: 8000 };
+
+  function notify(message, type, undo) {
+    const ms = undo ? 6000 : NOTICE_MS[type] || NOTICE_MS.info;
+    if (window.LineShareUI && typeof window.LineShareUI.toast === "function") {
+      window.LineShareUI.toast(message, undo ? { actionLabel: "元に戻す", onAction: undo, ms: ms } : { ms: ms });
       return;
     }
-
-    elements.statusPanel.className = "status-panel is-visible " + appState.status.type;
-    elements.statusPanel.innerHTML = [
-      '<div class="status-panel-inner">',
-      '  <div class="status-panel-text">' + escapeHtml(appState.status.message) + "</div>",
-      '  <button class="status-close-button" data-action="close-status" type="button" aria-label="閉じる">×</button>',
-      "</div>"
-    ].join("");
-  }
-
-  function setStatus(message, type) {
-    clearStatusTimer();
-    appState.status.message = message;
-    appState.status.type = type || "info";
-    renderStatus();
-
-    if (appState.status.type === "info") {
-      statusTimerId = window.setTimeout(function () {
-        clearStatus();
-      }, 1800);
-    }
-  }
-
-  function clearStatus() {
-    clearStatusTimer();
-    appState.status.message = "";
-    appState.status.type = "info";
-    renderStatus();
-  }
-
-  function clearStatusTimer() {
-    if (statusTimerId) {
-      window.clearTimeout(statusTimerId);
-      statusTimerId = 0;
-    }
+    const box = elements.statusFallback;
+    box.textContent = message;
+    box.hidden = false;
+    window.clearTimeout(notify.timerId);
+    notify.timerId = window.setTimeout(function () {
+      box.hidden = true;
+    }, ms);
   }
 
   function setActiveTab(tab) {
@@ -1265,7 +1236,6 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
     }
     const shouldShow = tabName === "ranking" ? isRankingEnabled() : true;
     element.hidden = !shouldShow;
-    element.classList.toggle("is-active", appState.activeTab === tabName);
   }
 
   function updateActionBar() {
@@ -1275,7 +1245,6 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
 
     renderLineHelp();
 
-    elements.actionBar.classList.toggle("has-debug-actions", isDebugModeEnabled());
     elements.copyJsonButton.hidden = !isDebugModeEnabled();
     elements.copyJsonButton.textContent = appState.liff.shareAvailable
       ? "Flex JSONコピー"
@@ -1319,7 +1288,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
       console.warn("Failed to keep draft:", error);
     }
     if (!loginWithLine()) {
-      setStatus("LINE のログインを始められませんでした。時間をおいてもう一度お試しください。", "warn");
+      notify("LINE のログインを始められませんでした。時間をおいてもう一度お試しください。", "warn");
     }
   }
 
@@ -1347,7 +1316,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
       }
       appState.workout = workout;
       appState.ui.expandedExerciseId = workout.exercises[0] ? workout.exercises[0].exerciseId : "";
-      setStatus("入力していた記録を戻しました。", "info");
+      notify("入力していた記録を戻しました。", "info");
     } catch (error) {
       console.warn("Failed to restore draft:", error);
     }
@@ -1473,12 +1442,10 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
         escapeHtml(exercise.exerciseId) +
         '">',
       '  <div class="exercise-header" data-disclosure-host>',
-      "    <div>",
+      '    <div class="exercise-heading">',
       '      <p class="section-label">エクササイズ ' + (exerciseIndex + 1) + "</p>",
-      '      <h3 class="exercise-title">' +
-        escapeHtml(exerciseTitle) +
-        "</h3>",
-      summary ? '      <p class="exercise-meta compact">' + summary + "</p>" : "",
+      '      <h3 class="exercise-title">' + escapeHtml(exerciseTitle) + "</h3>",
+      summary ? '      <p class="exercise-meta">' + escapeHtml(summary) + "</p>" : "",
       "    </div>",
       '    <div class="exercise-actions">' +
         (showExerciseFields
@@ -1491,10 +1458,9 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
               }
             })
           : "") +
-        renderActionButton({
+        renderButton({
           label: "削除",
-          icon: "🗑",
-          variant: "danger-button compact-action-button delete-pill",
+          className: "is-danger delete-pill",
           action: "remove-exercise",
           title: "種目削除",
           disabled: !canRemoveExercise,
@@ -1504,7 +1470,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
         }) +
         "</div>",
       "  </div>",
-      '  <div class="form-grid">',
+      '  <div class="exercise-body">',
       !showExerciseFields
         ? renderExercisePicker(exercise)
         : renderSelectedExerciseFields(exercise, isExpanded),
@@ -1524,18 +1490,15 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
     );
   }
 
+  // 種目追加は親指で押しやすい横幅いっぱいのボタン（いちばん下の種目のうしろに足す）
   function renderExerciseTailAddButton() {
-    return [
-      '<div class="between-exercise-action tail-add-action">',
-      '  <button class="outline-button between-exercise-button" data-action="insert-exercise-after" data-after-exercise-id="' +
-        escapeHtml(
-          appState.workout.exercises.length
-            ? appState.workout.exercises[appState.workout.exercises.length - 1].exerciseId
-            : ""
-        ) +
-        '" type="button">+ 種目追加</button>',
-      "</div>"
-    ].join("");
+    const exercises = appState.workout.exercises;
+    return renderButton({
+      label: "+ 種目追加",
+      className: "is-block tail-add-button",
+      action: "insert-exercise-after",
+      attrs: { "data-after-exercise-id": exercises.length ? exercises[exercises.length - 1].exerciseId : "" }
+    });
   }
 
   function renderSelectedExerciseFields(exercise, isExpanded) {
@@ -1546,11 +1509,10 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
     return [
       '<div class="exercise-content-shell">',
       exercise.isCustom
-        ? fieldTemplate({
+        ? renderField({
             label: "種目名",
-            className: "tile-field",
             input:
-              '<input class="text-input" aria-label="種目名" data-exercise-field="name" data-exercise-id="' +
+              '<input class="ls-input" data-exercise-field="name" data-exercise-id="' +
               escapeHtml(exercise.exerciseId) +
               '" type="text" placeholder="ベンチプレス / スクワット など" value="' +
               escapeHtml(exercise.name || "") +
@@ -1560,17 +1522,20 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
       '    <div class="sets-stack">',
       (exercise.sets || [])
         .map(function (set, setIndex) {
-          return renderSetRow(exercise.exerciseId, set, setIndex);
+          return renderSetRow(exercise, set, setIndex);
         })
         .join(""),
       "    </div>",
-      '    <div class="button-row exercise-inline-actions">',
-      '      <button class="outline-button add-set-button" data-action="add-set" data-exercise-id="' +
-      escapeHtml(exercise.exerciseId) +
-      '" type="button">+ セット追加</button>',
-      renderActionButton({
+      '    <div class="exercise-inline-actions">',
+      renderButton({
+        label: "+ セット追加",
+        className: "add-set-button",
+        action: "add-set",
+        attrs: { "data-exercise-id": exercise.exerciseId }
+      }),
+      renderButton({
         label: getExerciseMemoButtonLabel(exercise),
-        variant: "ghost-button memo-toggle-button",
+        className: "memo-toggle-button",
         action: "toggle-exercise-memo",
         title: "種目メモ",
         attrs: {
@@ -1585,9 +1550,9 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
 
   // 1セット分の行。スマホで押しやすいよう2段にし、kg・回数は −／＋ でも変えられる
   //   上段: 何セット目・推定RM・削除  下段: kg と回数
-  function renderSetRow(exerciseId, set, setIndex) {
-    const exercise = findExercise(exerciseId);
-    const canRemoveSet = exercise ? exercise.sets.length > 1 : false;
+  function renderSetRow(exercise, set, setIndex) {
+    const exerciseId = exercise.exerciseId;
+    const canRemoveSet = exercise.sets.length > 1;
     const ids =
       'data-exercise-id="' + escapeHtml(exerciseId) + '" data-set-id="' + escapeHtml(set.setId) + '"';
     return [
@@ -1603,9 +1568,9 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
         ">" +
         escapeHtml(hasEstimated1rm(set) ? formatLocaleMetric(set.estimated1rm, "kg", 1) : "-") +
         "</strong></div>",
-      renderActionButton({
+      renderButton({
         label: "削除",
-        variant: "danger-button compact-action-button set-remove-button delete-pill",
+        className: "is-danger delete-pill",
         action: "remove-set",
         title: "このセットを削除",
         disabled: !canRemoveSet,
@@ -1638,7 +1603,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
         options.step +
         '減らす">−</button>',
       '  <label class="stepper-field">',
-      '    <input class="number-input stepper-input" aria-label="' +
+      '    <input class="stepper-input" aria-label="' +
         label +
         "（" +
         options.unit +
@@ -1707,25 +1672,14 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
       return "";
     }
 
-    // 入力欄までの距離が伸びないよう、集計はボタンで開く（ふだんは閉じておく）
-    const isOpen = appState.ui.metricsOpen;
+    // 入力欄までの距離が伸びないよう、集計は開閉にする（ふだんは閉じておく。開け閉めは rememberFoldState が覚える）
     return [
-      '<section class="panel-card metrics-card">',
-      '  <div class="metrics-head" data-disclosure-host>',
-      '    <span class="metrics-title">📊 この記録の集計</span>',
-      '    <span class="badge">' + escapeHtml(String(previewExercises.length)) + "種目</span>",
-      renderDisclosureToggle({ isOpen: isOpen, action: "toggle-metrics", title: "この記録の集計" }),
-      "  </div>",
-      isOpen
-        ? '  <div class="stats-list">' +
-        previewExercises
-          .map(function (exercise) {
-            return renderExerciseStatCard(exercise);
-          })
-          .join("") +
-        "  </div>"
-        : "",
-      "</section>"
+      '<details class="ls-fold" data-fold="metrics"' + (appState.ui.metricsOpen ? " open" : "") + ">",
+      '  <summary><span class="ls-fold-icon" aria-hidden="true">📊</span>この記録の集計',
+      '    <span class="ls-fold-meta">' + escapeHtml(String(previewExercises.length)) + "種目</span>",
+      "  </summary>",
+      '  <div class="ls-fold-body stats-list">' + previewExercises.map(renderExerciseStatCard).join("") + "</div>",
+      "</details>"
     ].join("");
   }
 
@@ -1745,16 +1699,8 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
     return [
       // 補助的な操作は一番下に小さく（「履歴から始める」は見出しの横へ移した）
       '<div class="input-utility-row">',
-      renderActionButton({
-        label: "サンプルを入れる",
-        variant: "text-link-button",
-        action: "sample-workout"
-      }),
-      renderActionButton({
-        label: "入力をリセット",
-        variant: "text-link-button is-danger",
-        action: "reset-workout"
-      }),
+      '  <button class="text-link-button" data-action="sample-workout" type="button">サンプルを入れる</button>',
+      '  <button class="text-link-button is-danger" data-action="reset-workout" type="button">入力をリセット</button>',
       "</div>"
     ].join("");
   }
@@ -1771,34 +1717,35 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
     ].join("");
   }
 
-  function renderSettingsModal() {
+  function renderSettingsSheet() {
     if (!appState.ui.settingsModalOpen) {
       return "";
     }
     const color = escapeHtml(appState.theme.baseColor || DEFAULT_THEME.baseColor);
-    return renderModal({
+    return renderSheet({
       label: "あなたの記録と表示設定",
       title: "あなたの記録",
       closeAction: "close-settings-modal",
       body: [
-      renderGrass(),
-      '    <h4 class="settings-modal-subtitle">表示設定</h4>',
-      '    <p class="settings-modal-copy">アプリと送信プレビューの基調色を変更できます。</p>',
-      '    <div class="settings-color-row">',
-      '      <label class="tile-field settings-color-field">',
-      '        <span class="field-label">ベースカラー</span>',
-      '        <input class="color-input" data-theme-field="baseColor" type="color" value="' + color + '" />',
-      "      </label>",
-      '      <label class="tile-field settings-hex-field">',
-      '        <span class="field-label">HEX</span>',
-      '        <input class="text-input" data-theme-field="baseColor" type="text" inputmode="text" value="' +
-        color +
-        '" placeholder="#C96A2D" />',
-      "      </label>",
-      "    </div>",
-      '    <div class="settings-modal-actions">',
-      '      <button class="danger-button" data-action="reset-theme" type="button">初期色に戻す</button>',
-      "    </div>"
+        renderGrass(),
+        '<h4 class="sheet-subtitle">表示設定</h4>',
+        '<p class="ls-hint">アプリと送信プレビューの基調色を変更できます。</p>',
+        '<div class="settings-color-row">',
+        renderField({
+          label: "ベースカラー",
+          input: '<input class="color-input" data-theme-field="baseColor" type="color" value="' + color + '" />'
+        }),
+        renderField({
+          label: "HEX",
+          input:
+            '<input class="ls-input" data-theme-field="baseColor" type="text" inputmode="text" value="' +
+            color +
+            '" placeholder="#C96A2D" />'
+        }),
+        "</div>",
+        '<div class="settings-actions">',
+        renderButton({ label: "初期色に戻す", className: "is-danger", action: "reset-theme" }),
+        "</div>"
       ].join("")
     });
   }
@@ -1868,7 +1815,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
       '    <p class="grass-stats">' + GRASS_WEEKS + "週で <b>" + days + "日</b> ・ 最長 <b>" + best + "日</b> 連続</p>",
       '    <p class="grass-legend" aria-hidden="true">少<span class="grass-cell is-level-0"></span><span class="grass-cell is-level-1"></span><span class="grass-cell is-level-2"></span><span class="grass-cell is-level-3"></span><span class="grass-cell is-level-4"></span>多</p>',
       "  </div>",
-      '  <p class="settings-modal-copy">この端末で送った記録から数えています（1日のセット数で色が濃くなります）。</p>',
+      '  <p class="ls-hint">この端末で送った記録から数えています（1日のセット数で色が濃くなります）。</p>',
       "</section>"
     ].join("");
   }
@@ -1900,33 +1847,29 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
   function saveCurrentAsMenu() {
     const name = (appState.ui.menuName || "").trim();
     if (!name) {
-      setStatus("メニューの名前を入れてください。", "warn");
+      notify("メニューの名前を入れてください。", "warn");
       return;
     }
     if (countNamedExercises(appState.workout) === 0) {
-      setStatus("種目を1つ以上選んでから保存してください。", "warn");
+      notify("種目を1つ以上選んでから保存してください。", "warn");
       return;
     }
     const existing = MenuRepository.findByName(name);
-    if (existing && !window.confirm("「" + name + "」はもうあります。今の入力で上書きしますか？")) {
-      return;
-    }
     if (!existing && appState.menus.length >= MAX_MENUS) {
-      setStatus("メニューは " + MAX_MENUS + " 件まで保存できます。使わないものを削除してください。", "warn");
+      notify("メニューは " + MAX_MENUS + " 件まで保存できます。使わないものを削除してください。", "warn");
       return;
     }
+    // 同じ名前があれば確かめずに上書きし、「元に戻す」で前のメニューに戻せるようにする
+    const undo = existing ? undoMenuChange() : null;
     appState.menus = MenuRepository.save(buildMenuFromWorkout(appState.workout, name, existing && existing.menuId));
     renderInput();
-    setStatus("「" + name + "」をメニューに保存しました。", "info");
+    notify("「" + name + "」をメニューに" + (existing ? "上書き" : "保存") + "しました。", "info", undo);
   }
 
   function applyMenu(menuId) {
     const menu = findMenu(menuId);
     if (!menu) {
-      setStatus("選んだメニューが見つかりませんでした。", "warn");
-      return;
-    }
-    if (!confirmReplaceInput("今の入力内容を、メニュー「" + menu.name + "」で置き換えますか？")) {
+      notify("選んだメニューが見つかりませんでした。", "warn");
       return;
     }
     appState.ui.menuModalOpen = false;
@@ -1938,97 +1881,90 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
 
   function deleteMenu(menuId) {
     const menu = findMenu(menuId);
-    if (!menu || !window.confirm("メニュー「" + menu.name + "」を削除しますか？")) {
+    if (!menu) {
       return;
     }
+    const undo = undoMenuChange();
     appState.menus = MenuRepository.deleteById(menuId);
     renderInput();
-    setStatus("メニューを削除しました。", "info");
+    notify("🗑 メニュー「" + menu.name + "」を削除しました。", "info", undo);
   }
 
+  // いまのメニューの一覧を覚えておき、「元に戻す」で戻す関数を返す
+  function undoMenuChange() {
+    const saved = appState.menus.slice();
+    return function () {
+      appState.menus = MenuRepository.replaceAll(saved);
+      renderInput();
+      notify("元に戻しました。", "info");
+    };
+  }
+
+  // 1行が1つのメニュー（Q キットの一覧の行）。押すと入る。保存したものだけ右に削除
   function renderMenuRow(menu, deletable) {
     const names = (menu.exercises || [])
       .map(function (exercise) {
         return exercise.name;
       })
       .join("・");
+    const menuId = escapeHtml(menu.menuId);
     return [
-      '<li class="menu-row">',
-      '  <div class="menu-row-copy">',
-      '    <p class="menu-row-name">' + escapeHtml(menu.name) + '<span class="menu-row-meta">' + escapeHtml(summarizeMenu(menu)) + "</span></p>",
-      '    <p class="menu-row-exercises">' + escapeHtml(names) + "</p>",
-      "  </div>",
-      '  <div class="menu-row-actions">',
-      renderActionButton({
-        label: "入れる",
-        title: "「" + menu.name + "」を入れる",
-        variant: "pill-button menu-row-button",
-        action: "apply-menu",
-        attrs: { "data-menu-id": menu.menuId }
-      }),
+      '<div class="ls-list-row">',
+      '  <button class="ls-list-item" data-action="apply-menu" data-menu-id="' + menuId + '" type="button" title="' + escapeHtml("「" + menu.name + "」を入れる") + '">',
+      '    <span class="menu-name">' + escapeHtml(menu.name) + '<span class="menu-meta">' + escapeHtml(summarizeMenu(menu)) + "</span></span>",
+      "    <small>" + escapeHtml(names) + "</small>",
+      "  </button>",
       deletable
-        ? renderActionButton({
-          label: "削除",
-          title: "「" + menu.name + "」を削除",
-          variant: "danger-button menu-row-button",
-          action: "delete-menu",
-          attrs: { "data-menu-id": menu.menuId }
-        })
+        ? '  <button class="ls-icon-button" data-action="delete-menu" data-menu-id="' + menuId + '" type="button" aria-label="' + escapeHtml("「" + menu.name + "」を削除") + '">🗑</button>'
         : "",
-      "  </div>",
-      "</li>"
+      "</div>"
     ].join("");
   }
 
-  function renderMenuModal() {
+  function renderMenuSheet() {
     if (!appState.ui.menuModalOpen) {
       return "";
     }
     const canSave = countNamedExercises(appState.workout) > 0;
-    // 並び：今の入力を保存 → マイメニュー（保存したもの）→ おすすめ
-    return renderModal({
+    // 並び：今の入力を保存 → マイメニュー（保存したもの）→ おすすめ。押すとそのメニューが入る
+    return renderSheet({
       label: "トレーニングメニュー",
       title: "📋 トレーニングメニュー",
       closeAction: "close-menu-modal",
-      className: "menu-modal",
+      className: "menu-sheet",
       body: [
-      '    <p class="settings-modal-copy">よくやるメニューを保存しておくと、種目とセット（重さ・回数）をまとめて入れられます。</p>',
-      '    <div class="menu-save-row">',
-      '      <label class="tile-field menu-name-field">',
-      '        <span class="field-label">今の入力をメニューに保存</span>',
-      '        <input class="text-input" data-menu-field="name" type="text" maxlength="30" placeholder="胸の日 など" value="' +
-        escapeHtml(appState.ui.menuName || "") +
-        '"' +
-        (canSave ? "" : " disabled") +
-        " />",
-      "      </label>",
-      renderActionButton({
-        label: "保存",
-        title: "今の入力をメニューに保存",
-        variant: "pill-button menu-save-button",
-        action: "save-menu",
-        disabled: !canSave
-      }),
-      "    </div>",
-      canSave ? "" : '    <p class="menu-hint">種目を選ぶと、今の入力をメニューとして保存できます。</p>',
-      '    <div class="menu-scroll">',
-      '      <h4 class="menu-section-title">マイメニュー</h4>',
-      appState.menus.length
-        ? '      <ul class="menu-list">' +
-          appState.menus
-            .map(function (menu) {
-              return renderMenuRow(menu, true);
-            })
-            .join("") +
-          "</ul>"
-        : '      <p class="menu-hint">まだありません。上から保存すると、ここに並びます。</p>',
-      '      <h4 class="menu-section-title">おすすめ</h4>',
-      '      <ul class="menu-list">' +
-        MENU_PRESETS.map(function (preset) {
-          return renderMenuRow(expandMenuPreset(preset), false);
-        }).join("") +
-        "</ul>",
-      "    </div>"
+        '<p class="ls-hint">よくやるメニューを保存しておくと、種目とセット（重さ・回数）をまとめて入れられます。押すと入ります。</p>',
+        '<div class="menu-save-row">',
+        renderField({
+          label: "今の入力をメニューに保存",
+          input:
+            '<input class="ls-input" data-menu-field="name" type="text" maxlength="30" placeholder="胸の日 など" value="' +
+            escapeHtml(appState.ui.menuName || "") +
+            '"' +
+            (canSave ? "" : " disabled") +
+            " />"
+        }),
+        renderButton({ label: "保存", title: "今の入力をメニューに保存", action: "save-menu", disabled: !canSave }),
+        "</div>",
+        canSave ? "" : '<p class="ls-hint">種目を選ぶと、今の入力をメニューとして保存できます。</p>',
+        '<div class="menu-scroll">',
+        '  <h4 class="menu-section-title">マイメニュー</h4>',
+        appState.menus.length
+          ? '  <div class="ls-list menu-list">' +
+            appState.menus
+              .map(function (menu) {
+                return renderMenuRow(menu, true);
+              })
+              .join("") +
+            "</div>"
+          : '  <p class="ls-hint">まだありません。上から保存すると、ここに並びます。</p>',
+        '  <h4 class="menu-section-title">おすすめ</h4>',
+        '  <div class="ls-list menu-list">' +
+          MENU_PRESETS.map(function (preset) {
+            return renderMenuRow(expandMenuPreset(preset), false);
+          }).join("") +
+          "</div>",
+        "</div>"
       ].join("")
     });
   }
@@ -2077,49 +2013,27 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
 
   function renderHistoryCard(workout) {
     const isOpen = Boolean(appState.ui.openHistoryIds[workout.workoutId]);
+    const idAttrs = { "data-workout-id": workout.workoutId };
     return [
-      '<article class="history-card history-card-accordion' +
-        (isOpen ? " is-open" : "") +
-        '">',
-      '  <div class="history-card-head history-card-summary" data-disclosure-host>',
+      '<article class="history-card">',
+      '  <div class="history-card-head" data-disclosure-host>',
       '    <div class="history-card-copy">',
-      '      <p class="history-meta history-meta-inline">' +
+      '      <p class="history-meta">' +
         escapeHtml(workout.date || "-") +
         " ・ " +
         escapeHtml(String((workout.exercises || []).length)) +
         "種目</p>",
       "      <h4>" + escapeHtml(resolveWorkoutTitle(workout.title, workout.user)) + "</h4>",
       "    </div>",
-      '    <div class="history-actions history-actions-inline">',
-      renderActionButton({
-        label: "この内容で入力",
-        variant: "pill-button history-action-button",
-        action: "restore-history",
-        attrs: {
-          "data-workout-id": workout.workoutId
-        }
-      }),
-      renderDisclosureToggle({
-        isOpen: isOpen,
-        action: "toggle-history-card",
-        title: "履歴",
-        attrs: {
-          "data-workout-id": workout.workoutId
-        }
-      }),
+      '    <div class="history-actions">',
+      renderButton({ label: "この内容で入力", className: "history-action-button", action: "restore-history", attrs: idAttrs }),
+      renderDisclosureToggle({ isOpen: isOpen, action: "toggle-history-card", title: "履歴", attrs: idAttrs }),
       "    </div>",
       "  </div>",
-      '  <div class="history-card-body' + (isOpen ? "" : ' is-hidden') + '">',
+      '  <div class="history-card-body"' + (isOpen ? "" : " hidden") + ">",
       renderWorkoutExerciseStats(workout),
       '    <div class="history-actions history-actions-end">',
-      renderActionButton({
-        label: "削除",
-        variant: "danger-button history-action-button",
-        action: "delete-history",
-        attrs: {
-          "data-workout-id": workout.workoutId
-        }
-      }),
+      renderButton({ label: "削除", className: "is-danger history-action-button", action: "delete-history", attrs: idAttrs }),
       "    </div>",
       "  </div>",
       "</article>"
@@ -2128,22 +2042,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
 
   function renderWorkoutExerciseStats(workout) {
     const exercises = getNamedExercises(workout);
-
-    if (!exercises.length) {
-      return "";
-    }
-
-    return [
-      '<section class="workout-stats-section">',
-      '  <div class="preview-grid">',
-      exercises
-        .map(function (exercise) {
-          return renderExerciseStatCard(exercise);
-        })
-        .join(""),
-      "  </div>",
-      "</section>"
-    ].join("");
+    return exercises.length ? '<div class="stats-grid">' + exercises.map(renderExerciseStatCard).join("") + "</div>" : "";
   }
 
   function toggleHistoryCard(workoutId) {
@@ -2153,8 +2052,8 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
 
   // 種目が多いと LINE ではカードが横に並ぶ（カルーセル）。プレビューも同じく横スクロールで見せる
   function renderBubbleCarousel(workout, bubbles) {
-    const items = bubbles.map(function (bubble, index) {
-      return renderBubblePreview(workout, bubble, index);
+    const items = bubbles.map(function (bubble) {
+      return renderBubblePreview(workout, bubble);
     });
     if (items.length <= 1) {
       return items.join("");
@@ -2170,7 +2069,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
     ].join("");
   }
 
-  function renderBubblePreview(workout, bubble, index) {
+  function renderBubblePreview(workout, bubble) {
     const exerciseBoxes = bubble.body && bubble.body.contents ? bubble.body.contents : [];
     const headerContents = bubble.header && bubble.header.contents ? bubble.header.contents : [];
     const headerMetaBox = headerContents[0] && headerContents[0].contents ? headerContents[0] : null;
@@ -2180,10 +2079,10 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
     const titleText = headerContents[1] ? headerContents[1].text : resolveWorkoutTitle(workout.title, workout.user);
     return [
       '<section class="preview-bubble">',
-      '  <div class="preview-bubble-header preview-bubble-header-themed">',
+      '  <div class="preview-bubble-header">',
       '    <div class="preview-header-meta">',
-      '      <div class="preview-note">' + escapeHtml(dateText) + "</div>",
-      userText ? '      <div class="preview-note preview-note-user">' + escapeHtml(userText) + "</div>" : "",
+      "      <div>" + escapeHtml(dateText) + "</div>",
+      userText ? '      <div class="preview-note-user">' + escapeHtml(userText) + "</div>" : "",
       "    </div>",
       '    <div class="preview-bubble-title">' + escapeHtml(titleText) + "</div>",
       "  </div>",
@@ -2194,7 +2093,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
           const summary = headerBox.contents[1] ? headerBox.contents[1].text : "";
           const bodyLines = box.contents.slice(1);
           return [
-            '<article class="preview-exercise preview-exercise-card">',
+            '<article class="preview-exercise">',
             '  <div class="preview-exercise-head">',
             "    <h4>" + escapeHtml(title) + "</h4>",
             '    <span class="preview-exercise-rm">' + escapeHtml(summary) + "</span>",
@@ -2260,7 +2159,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
           })
           .join("") +
         "  </div>"
-        : '<div class="empty-state">ランキングデータはまだありません。</div>',
+        : '<p class="ls-hint">ランキングデータはまだありません。</p>',
       "</article>"
     ].join("");
   }
@@ -2274,82 +2173,73 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
     }
 
     return [
-      '<article class="summary-card summary-card-inline">',
+      '<article class="summary-card">',
       '  <div class="summary-card-main">',
       '    <strong class="summary-name">' + escapeHtml(exercise.name || "未入力種目") + "</strong>",
       '    <span class="summary-inline-meta">' + escapeHtml(caption.join(" / ")) + "</span>",
       "  </div>",
-      '  <strong class="summary-value summary-value-inline">' +
+      '  <strong class="summary-value">' +
         escapeHtml(exercise.maxEstimated1rm > 0 ? formatLocaleMetric(exercise.maxEstimated1rm, "kg", 1) : "-") +
         "</strong>",
       "</article>"
     ].join("");
   }
 
+  // 種目を選ぶところ：1. 部位（チップ） → 2. その部位の種目（チップ）か、自由入力
   function renderExercisePicker(exercise) {
-    const muscleButtons = MUSCLE_FILTERS.filter(function (muscle) {
+    const idAttrs = { "data-exercise-id": exercise.exerciseId };
+    const muscleChips = MUSCLE_FILTERS.filter(function (muscle) {
       return muscle !== "all";
     })
       .map(function (muscle) {
-        const isActive = exercise.selectionMuscle === muscle;
-        return (
-          '<button class="catalog-chip' +
-          (isActive ? " is-active" : "") +
-          '" data-action="set-exercise-muscle" data-exercise-id="' +
-          escapeHtml(exercise.exerciseId) +
-          '" data-muscle="' +
-          escapeHtml(muscle) +
-          '" type="button">' +
-          escapeHtml(muscle) +
-          "</button>"
-        );
+        return renderChip({
+          label: muscle,
+          action: "set-exercise-muscle",
+          pressed: exercise.selectionMuscle === muscle,
+          attrs: Object.assign({ "data-muscle": muscle }, idAttrs)
+        });
       })
       .join("");
 
-    const candidateExercises = exercise.selectionMuscle
-      ? exercise.selectionMuscle === "その他"
-        ? []
-        : EXERCISE_CATALOG.filter(function (item) {
-          return item.muscle === exercise.selectionMuscle;
-        })
-      : [];
+    const muscle = exercise.selectionMuscle;
+    const candidates =
+      muscle && muscle !== "その他"
+        ? EXERCISE_CATALOG.filter(function (item) {
+            return item.muscle === muscle;
+          })
+        : [];
 
-    const exerciseCards = candidateExercises.length
-      ? candidateExercises
-        .map(function (item) {
-          return (
-            '<button class="catalog-chip exercise-option-button' +
-            '" data-action="choose-exercise-card" data-exercise-id="' +
-            escapeHtml(exercise.exerciseId) +
-            '" data-catalog-id="' +
-            escapeHtml(item.id) +
-            '" type="button">' +
-            escapeHtml(item.name) +
-            "</button>"
-          );
-        })
-        .join("")
-      : exercise.selectionMuscle === "その他"
-        ? '<div class="empty-state compact">自由入力で種目を追加します。</div>'
-      : exercise.selectionMuscle
-        ? '<div class="empty-state compact">この部位には候補がまだありません。手入力で追加できます。</div>'
-        : '<div class="empty-state compact">先に部位を選ぶと、候補の種目が表示されます。</div>';
+    const options = candidates.length
+      ? '<div class="ls-chips">' +
+        candidates
+          .map(function (item) {
+            return renderChip({
+              label: item.name,
+              action: "choose-exercise-card",
+              attrs: Object.assign({ "data-catalog-id": item.id }, idAttrs)
+            });
+          })
+          .join("") +
+        "</div>"
+      : '<p class="ls-hint">' +
+        (muscle === "その他"
+          ? "自由入力で種目を追加します。"
+          : muscle
+            ? "この部位には候補がまだありません。手入力で追加できます。"
+            : "先に部位を選ぶと、候補の種目が表示されます。") +
+        "</p>";
 
     return [
-      '<div class="exercise-picker selection-shell">',
-      '  <div class="field-group">',
-      '    <span class="field-label">1. 部位を選択</span>',
-      '    <div class="catalog-filter-row">' + muscleButtons + "</div>",
+      '<div class="exercise-picker">',
+      '  <div class="ls-field">',
+      '    <span class="ls-label">1. 部位を選択</span>',
+      '    <div class="ls-chips">' + muscleChips + "</div>",
       "  </div>",
-      '  <div class="field-group">',
-      '    <span class="field-label">2. 種目を選択</span>',
-      '    <div class="exercise-option-list">' + exerciseCards + "</div>",
-      exercise.selectionMuscle
-        ? '    <div class="between-exercise-action"><button class="outline-button between-exercise-button" data-action="start-custom-exercise" data-exercise-id="' +
-        escapeHtml(exercise.exerciseId) +
-        '" type="button">' +
-        "＋自由入力" +
-        "</button></div>"
+      '  <div class="ls-field">',
+      '    <span class="ls-label">2. 種目を選択</span>',
+      options,
+      muscle
+        ? renderButton({ label: "＋自由入力", className: "custom-exercise-button", action: "start-custom-exercise", attrs: idAttrs })
         : "",
       "  </div>",
       "</div>"
@@ -2405,11 +2295,10 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
       return "";
     }
 
-    return fieldTemplate({
+    return renderField({
       label: "種目メモ",
-      className: "memo-field",
       input:
-        '<textarea class="textarea-input compact-textarea" data-exercise-field="memo" data-exercise-id="' +
+        '<textarea class="ls-input memo-input" data-exercise-field="memo" data-exercise-id="' +
         escapeHtml(exercise.exerciseId) +
         '" placeholder="フォームや調子のメモ">' +
         escapeHtml(exercise.memo || "") +
@@ -2430,21 +2319,21 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
   }
 
   function resetWorkout() {
-    if (!window.confirm("現在の入力内容をリセットしますか？")) {
-      return;
-    }
     replaceWorkout(createEmptyWorkout(), "入力内容をリセットしました。");
   }
 
+  // 確かめずにすぐ消し、トーストの「元に戻す」で戻せるようにする
   function deleteHistory(workoutId) {
-    const shouldDelete = window.confirm("この履歴を削除しますか？");
-    if (!shouldDelete) {
-      return;
-    }
+    const saved = appState.history.slice();
     appState.history = LocalStorageWorkoutRepository.deleteById(workoutId);
     renderHistory();
     renderShell();
-    setStatus("履歴を削除しました。", "info");
+    notify("🗑 履歴を削除しました。", "info", function () {
+      appState.history = LocalStorageWorkoutRepository.replaceAll(saved);
+      renderHistory();
+      renderShell();
+      notify("元に戻しました。", "info");
+    });
   }
 
   function changeRankingPeriod(period) {
@@ -2457,12 +2346,12 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
 
   async function copyCurrentFlexJson() {
     if (!isDebugModeEnabled()) {
-      setStatus("Flex JSONコピーはデバッグモードでのみ利用できます。", "warn");
+      notify("Flex JSONコピーはデバッグモードでのみ利用できます。", "warn");
       return;
     }
     const validation = validateWorkout(appState.workout);
     if (!validation.valid) {
-      setStatus(validation.errors.join(" "), "error");
+      notify(validation.errors.join(" "), "error");
       return;
     }
 
@@ -2474,9 +2363,9 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610211352";
     renderPreview();
 
     if (copied) {
-      setStatus("Flex JSON をコピーしました。", "info");
+      notify("Flex JSON をコピーしました。", "info");
     } else {
-      setStatus("クリップボードへコピーできなかったため、JSONプレビューを開いています。", "warn");
+      notify("クリップボードへコピーできなかったため、JSONプレビューを開いています。", "warn");
     }
   }
 

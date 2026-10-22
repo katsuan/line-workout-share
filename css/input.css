@@ -1,0 +1,417 @@
+/* キロっく：入力の画面（見出し → 始め方 → タイトル → 種目とセット → サンプル・リセット） */
+
+.input-stack {
+  display: grid;
+  gap: 12px;
+}
+
+/* ---- 見出し（ユーザーのアイコン＋「記録入力」） ---- */
+.input-page-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 4px 0;
+}
+
+.input-page-head .panel-title {
+  flex: 1;
+  min-width: 0;
+}
+
+/* アイコンを押すと、草グラフと表示設定のシートが開く */
+.user-avatar-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.user-avatar {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--ls-accent-soft);
+  color: var(--ls-accent-ink);
+}
+
+.user-avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.user-avatar-fallback {
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+/* ---- 始め方（メニュー・履歴から）：等幅で並べる。狭い画面でも文字は1行で省略する ---- */
+.input-start-row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.input-start-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 52px;
+  padding: 8px 12px;
+  border: 1px solid var(--kq-outline);
+  border-radius: 16px;
+  background: var(--kq-surface);
+  color: var(--ls-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.input-start-button:active {
+  background: var(--ls-accent-soft);
+}
+
+.input-start-icon {
+  flex: 0 0 auto;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.input-start-copy {
+  display: grid;
+  min-width: 0;
+}
+
+.input-start-label,
+.input-start-sub {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.input-start-label {
+  color: var(--ls-accent-ink);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.input-start-sub {
+  color: var(--ls-subtext);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+/* ---- 入力中の種目（上に貼りつき、押すとそのカードへ） ---- */
+.current-exercise-indicator {
+  position: sticky;
+  top: 8px;
+  z-index: 8;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--kq-outline);
+  border-radius: 14px;
+  background: var(--kq-surface);
+  box-shadow: 0 8px 18px rgba(31, 42, 31, 0.06);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.current-exercise-copy {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+
+.current-exercise-label {
+  color: var(--ls-subtext);
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.current-exercise-name {
+  color: var(--ls-text);
+  font-size: 0.88rem;
+  font-weight: 650;
+}
+
+.current-exercise-jump {
+  color: var(--ls-subtext);
+  font-size: 1.2rem;
+}
+
+/* ---- 種目カード ---- */
+.exercise-card {
+  /* 「入力中」から移ったとき、カードの頭が「入力中」の帯に隠れないように */
+  scroll-margin-top: 76px;
+  padding: 10px 12px;
+  border: 1px solid var(--kq-outline);
+  border-radius: var(--ls-radius-lg);
+  background: #fff;
+  box-shadow: var(--ls-shadow);
+}
+
+.exercise-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.exercise-heading {
+  flex: 1;
+  min-width: 0;
+}
+
+.exercise-actions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.exercise-title {
+  margin: 0;
+  font-size: 0.98rem;
+}
+
+.exercise-meta {
+  margin: 1px 0 0;
+  color: var(--ls-subtext);
+  font-size: 0.8rem;
+  line-height: 1.25;
+}
+
+.exercise-body,
+.exercise-content-shell {
+  display: grid;
+  gap: 10px;
+}
+
+/* 部位 → 種目 を選ぶところ */
+.exercise-picker {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px dashed var(--kq-outline);
+  border-radius: 16px;
+  background: var(--kq-tint);
+}
+
+.exercise-picker .ls-chip {
+  max-width: 100%;
+  white-space: normal;
+}
+
+.custom-exercise-button {
+  justify-self: start;
+  min-height: 36px;
+  font-size: 0.82rem;
+}
+
+/* ---- セットの行（スマホ向けの2段：何セット目・推定RM・削除 ／ kg と回数） ---- */
+.sets-stack {
+  display: grid;
+  gap: 8px;
+}
+
+.set-row {
+  padding: 10px;
+  border: 1px solid var(--kq-outline);
+  border-radius: 16px;
+  background: var(--kq-surface-strong);
+}
+
+.set-row-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.set-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--ls-accent-soft);
+  color: var(--ls-accent-ink);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.set-head-meta {
+  display: flex;
+  flex: 1;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.set-head-meta .metric-label {
+  color: var(--ls-subtext);
+  font-size: 0.73rem;
+  font-weight: 700;
+}
+
+.set-head-meta .metric-value {
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.set-head-meta.is-max-rm .metric-value {
+  color: var(--ls-accent-ink);
+}
+
+.set-head-meta.is-max-rm .metric-value::after {
+  content: " MAX";
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.set-row-inputs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* kg・回数：左右に −／＋。−／＋ は控えめに（背景なし・細い記号）。押せる高さ 52px は保つ */
+.set-stepper {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 36px;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid var(--kq-outline);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.set-stepper:focus-within {
+  border-color: var(--ls-accent-ink);
+  box-shadow: 0 0 0 3px var(--ls-accent-soft);
+}
+
+.stepper-button {
+  min-height: 52px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ls-subtext);
+  font-size: 1.1rem;
+  font-weight: 400;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.stepper-button:active {
+  background: var(--ls-accent-soft);
+  color: var(--ls-accent-ink);
+}
+
+.stepper-field {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 0 2px;
+}
+
+.stepper-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 52px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  /* iPhone で入力時に拡大されないよう 16px 以上 */
+  font-size: 1.15rem;
+  font-weight: 700;
+  text-align: right;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.stepper-input::-webkit-outer-spin-button,
+.stepper-input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.stepper-input:focus {
+  outline: none;
+}
+
+.stepper-unit {
+  flex: 0 0 auto;
+  color: var(--ls-subtext);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+/* セット追加・メモ：横に等分 */
+.exercise-inline-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.exercise-inline-actions .ls-button {
+  min-width: 0;
+  border-color: transparent;
+}
+
+.add-set-button {
+  background: var(--kq-surface);
+  color: var(--ls-accent-ink);
+}
+
+.memo-toggle-button {
+  background: rgba(255, 255, 255, 0.64);
+}
+
+textarea.memo-input {
+  min-height: 64px;
+}
+
+/* 種目追加は親指で押しやすい横幅いっぱいのボタンに */
+.tail-add-button {
+  min-height: 48px;
+  margin: 2px 0 8px;
+  border-style: dashed;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+/* 補助の操作は一番下に小さく */
+.input-utility-row {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  padding: 4px 0 12px;
+}

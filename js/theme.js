@@ -1,4 +1,4 @@
-import { DEFAULT_THEME, FLEX_THEME, STORAGE_KEYS } from "./constants.js?v=202610211352";
+import { DEFAULT_THEME, FLEX_THEME, STORAGE_KEYS } from "./constants.js?v=202610221110";
 
 export function loadThemePreference() {
   try {
@@ -21,34 +21,29 @@ export function saveThemePreference(theme) {
   localStorage.setItem(STORAGE_KEYS.theme, JSON.stringify(theme));
 }
 
+// 選んだ色を、Q キットの色（--ls-accent など。チップ・ボタン・タブ）と、キロっくにしかない部品の色（--kq-*）に入れる。
+// 初期色のときの値は css/base.css の :root にも書いてある（開いた瞬間から色が付くように）
 export function applyTheme(baseColor) {
   const normalizedColor = normalizeHexColor(baseColor) || DEFAULT_THEME.baseColor;
-  const root = document.documentElement;
-  const theme = buildThemePalette(normalizedColor);
-  root.style.setProperty("--primary", theme.primary);
-  root.style.setProperty("--primary-dark", theme.primaryDark);
-  root.style.setProperty("--primary-soft", theme.primarySoft);
-  root.style.setProperty("--primary-tint", theme.primaryTint);
-  root.style.setProperty("--primary-line", theme.primaryLine);
-  root.style.setProperty("--primary-outline", theme.primaryOutline);
-  root.style.setProperty("--primary-surface", theme.primarySurface);
-  root.style.setProperty("--primary-surface-strong", theme.primarySurfaceStrong);
-  root.style.setProperty("--primary-fade", theme.primaryFade);
-  root.style.setProperty("--bg-accent", theme.bgAccent);
+  const style = document.documentElement.style;
+  const palette = buildThemePalette(normalizedColor);
+  Object.keys(palette).forEach(function (name) {
+    style.setProperty(name, palette[name]);
+  });
 }
 
 export function buildThemePalette(baseColor) {
   return {
-    primary: baseColor,
-    primaryDark: adjustColorLightness(baseColor, -0.24),
-    primarySoft: mixColors(baseColor, "#FFFFFF", 0.76),
-    primaryTint: mixColors(baseColor, "#FFF8F1", 0.9),
-    primaryLine: mixColors(baseColor, "#BFC8BF", 0.52),
-    primaryOutline: mixColors(baseColor, "#E6D6C8", 0.72),
-    primarySurface: mixColors(baseColor, "#FFF9F3", 0.92),
-    primarySurfaceStrong: mixColors(baseColor, "#FCFEFC", 0.94),
-    primaryFade: mixColors(baseColor, "#F7F0E8", 0.86),
-    bgAccent: mixColors(baseColor, "#F4EBDD", 0.88)
+    "--ls-accent": baseColor,
+    "--ls-accent-strong": adjustColorLightness(baseColor, -0.12),
+    "--ls-accent-soft": mixColors(baseColor, "#FFFFFF", 0.76),
+    "--ls-accent-ink": adjustColorLightness(baseColor, -0.24),
+    "--ls-tabs-bg": mixColors(baseColor, "#F7F0E8", 0.86),
+    "--kq-tint": mixColors(baseColor, "#FFF8F1", 0.9),
+    "--kq-outline": mixColors(baseColor, "#E6D6C8", 0.72),
+    "--kq-surface": mixColors(baseColor, "#FFF9F3", 0.92),
+    "--kq-surface-strong": mixColors(baseColor, "#FCFEFC", 0.94),
+    "--kq-bg-accent": mixColors(baseColor, "#F4EBDD", 0.88)
   };
 }
 

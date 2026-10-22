@@ -1,4 +1,4 @@
-import { FEATURE_FLAGS, MAX_HISTORY_ITEMS, MAX_MENUS, STORAGE_KEYS } from "./constants.js?v=202610211352";
+import { FEATURE_FLAGS, MAX_HISTORY_ITEMS, MAX_MENUS, STORAGE_KEYS } from "./constants.js?v=202610221110";
 
 export function createLocalStorageWorkoutRepository(hydrateWorkout) {
   return {
@@ -42,11 +42,16 @@ export function createLocalStorageWorkoutRepository(hydrateWorkout) {
       });
     },
     deleteById: function (workoutId) {
-      const nextList = this.loadAll().filter(function (item) {
-        return item.workoutId !== workoutId;
-      });
-      localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(nextList));
-      return nextList;
+      return this.replaceAll(
+        this.loadAll().filter(function (item) {
+          return item.workoutId !== workoutId;
+        })
+      );
+    },
+    // 一覧をまるごと入れ替える（消したあとの「元に戻す」）
+    replaceAll: function (list) {
+      localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(list));
+      return list;
     }
   };
 }
@@ -85,22 +90,25 @@ export function createLocalStorageMenuRepository() {
         return menu.name === name;
       });
     },
-    // 同じ名前のメニューは置き換える（呼ぶ側で上書きを確認する）
+    // 同じ名前のメニューは置き換える（呼ぶ側で「元に戻す」を出す）
     save: function (menu) {
       const list = this.loadAll().filter(function (item) {
         return item.menuId !== menu.menuId && item.name !== menu.name;
       });
       list.unshift(menu);
-      const trimmed = list.slice(0, MAX_MENUS);
-      localStorage.setItem(STORAGE_KEYS.menus, JSON.stringify(trimmed));
-      return trimmed;
+      return this.replaceAll(list.slice(0, MAX_MENUS));
     },
     deleteById: function (menuId) {
-      const nextList = this.loadAll().filter(function (item) {
-        return item.menuId !== menuId;
-      });
-      localStorage.setItem(STORAGE_KEYS.menus, JSON.stringify(nextList));
-      return nextList;
+      return this.replaceAll(
+        this.loadAll().filter(function (item) {
+          return item.menuId !== menuId;
+        })
+      );
+    },
+    // 一覧をまるごと入れ替える（消す・上書きしたあとの「元に戻す」）
+    replaceAll: function (list) {
+      localStorage.setItem(STORAGE_KEYS.menus, JSON.stringify(list));
+      return list;
     }
   };
 }

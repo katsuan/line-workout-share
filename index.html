@@ -21,26 +21,30 @@
     <link rel="icon" href="./icon-32.png" type="image/png" sizes="32x32" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="stylesheet" href="./style.css?v=202610211352" />
+    <!-- 部品（見出しの行・タブ・カード・チップ・入力欄・ボタン・開閉・シート・送る帯・トースト）はおくるんの Q キット。キロっくの CSS より前に読む -->
+    <link rel="stylesheet" href="https://katsuan.github.io/line-share/shared/ui.css" />
+    <link rel="stylesheet" href="./style.css?v=202610221110" />
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
-    <script src="./config.js?v=202610211352"></script>
-    <script type="module" src="./app.js?v=202610211352"></script>
+    <script src="https://katsuan.github.io/line-share/shared/ui.js" defer></script>
+    <script src="./config.js?v=202610221110"></script>
+    <script type="module" src="./app.js?v=202610221110"></script>
     <script src="https://katsuan.github.io/line-share/shared/tool-share.js" data-tool="kiloq" defer></script>
   </head>
   <body>
-    <div class="app-shell">
-      <!-- 見出しは1行：アイコン＋名前（左）と、横長のロゴ（右）。さくせん盤と同じ形 -->
-      <header class="brand-row">
-        <h1 class="brand-name"><img class="brand-icon" src="./icon.svg" alt="" width="28" height="28" />キロっく</h1>
-        <img class="brand-logo" src="./logo.svg" alt="kiloQ" width="66" height="28" />
+    <div class="ls-page app-shell">
+      <!-- 見出しは1行：アイコン＋名前（左）と、横長のロゴ（右）。Q キットの見出しの行 -->
+      <header class="ls-brand">
+        <h1 class="ls-brand-name"><img class="ls-brand-icon" src="./icon.svg" alt="" width="28" height="28" />キロっく</h1>
+        <img class="ls-brand-logo" src="./logo.svg" alt="kiloQ" width="66" height="28" />
       </header>
-      <p class="brand-copy">キロを刻んで、記録を積もう</p>
-      <section class="status-panel" id="status-panel" aria-live="polite"></section>
+      <p class="ls-brand-copy">キロを刻んで、記録を積もう</p>
+      <!-- 知らせは Q キットのトースト（下に数秒）。ui.js が読めないときだけ、ここに出す -->
+      <p class="status-fallback" id="status-fallback" aria-live="polite" hidden></p>
 
-      <nav class="tab-nav" id="tab-nav" aria-label="メインタブ">
-        <button class="tab-button is-active" data-tab="input" type="button">入力</button>
-        <button class="tab-button" data-tab="history" type="button">履歴</button>
-        <button class="tab-button" id="tab-button-ranking" data-tab="ranking" type="button" hidden>
+      <nav class="ls-tabs tab-nav" id="tab-nav" role="tablist" aria-label="メインタブ">
+        <button class="ls-tab" data-tab="input" type="button" role="tab" aria-selected="true">入力</button>
+        <button class="ls-tab" data-tab="history" type="button" role="tab" aria-selected="false">履歴</button>
+        <button class="ls-tab" id="tab-button-ranking" data-tab="ranking" type="button" role="tab" aria-selected="false" hidden>
           ランキング
         </button>
       </nav>
@@ -48,7 +52,7 @@
       <main class="tab-panels">
         <!-- 送信プレビューは入力の一番上に置く（入力しながら送る中身を確かめられる） -->
         <section class="tab-panel" id="tab-preview" hidden></section>
-        <section class="tab-panel is-active" id="tab-input"></section>
+        <section class="tab-panel" id="tab-input"></section>
         <section class="tab-panel" id="tab-history" hidden></section>
         <section class="tab-panel" id="tab-ranking" hidden></section>
       </main>
@@ -56,19 +60,22 @@
       <div data-tool-share></div>
     </div>
 
-    <div class="action-bar" id="action-bar">
-      <button class="action-button secondary" id="copy-json-button" type="button" hidden>
-        Flex JSONコピー
-      </button>
-      <!-- LINE の外で開いたとき（送り先選びが使えないとき）だけ出す。ログインか LINE アプリで送れる環境へ移る。入力は持っていく -->
-      <div class="line-help" id="line-help" hidden>
-        <p class="line-help-text">LINE の外で開いています。送るには、どちらかから：</p>
-        <div class="line-help-actions">
-          <button class="line-help-button" id="line-login-button" data-action="line-login" type="button">🔑 ログインして送る</button>
-          <a class="line-help-button is-app" id="line-app-link" href="#">💬 LINE アプリで開く</a>
+    <!-- 下に固定する送る帯（Q キットの ls-sendbar。文字の入力中はキーボードと重ならないよう隠れる） -->
+    <div class="ls-sendbar" id="action-bar">
+      <div class="ls-sendbar-inner">
+        <!-- LINE の外で開いたとき（送り先選びが使えないとき）だけ出す。ログインか LINE アプリで送れる環境へ移る。入力は持っていく -->
+        <div class="ls-outside" id="line-help" hidden>
+          <p class="ls-outside-text">LINE の外で開いています。送るには、どちらかから：</p>
+          <div class="ls-outside-actions">
+            <button class="ls-outside-button" id="line-login-button" data-action="line-login" type="button">🔑 ログインして送る</button>
+            <a class="ls-outside-button is-app" id="line-app-link" href="#">💬 LINE アプリで開く</a>
+          </div>
+        </div>
+        <div class="ls-sendbar-row">
+          <button class="ls-send ls-send-secondary" id="copy-json-button" type="button" hidden>Flex JSONコピー</button>
+          <button class="ls-send is-line" id="share-button" type="button">LINEで共有</button>
         </div>
       </div>
-      <button class="action-button primary" id="share-button" type="button">LINEで共有</button>
     </div>
   </body>
 </html>

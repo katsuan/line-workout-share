@@ -1,0 +1,315 @@
+/* キロっく：履歴（月ごとの開閉・記録のカード）、草グラフと表示設定のシート、トレーニングメニューのシート、ランキング（デバッグ用） */
+
+/* ---- 履歴 ---- */
+.history-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.history-tools-count {
+  margin: 0;
+  color: var(--ls-subtext);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.history-month-title {
+  flex: 1;
+}
+
+.history-month-tools {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.history-stack {
+  display: grid;
+  gap: 8px;
+}
+
+.history-card {
+  overflow: hidden;
+  border: 1px solid var(--kq-outline);
+  border-radius: var(--ls-radius-lg);
+  background: var(--kq-surface);
+  box-shadow: var(--ls-shadow);
+}
+
+.history-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+}
+
+.history-card-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.history-card-copy h4 {
+  margin: 0 0 4px;
+}
+
+.history-meta {
+  margin: 0 0 4px;
+  color: var(--ls-subtext);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.history-card-body {
+  display: grid;
+  gap: 12px;
+  padding: 0 16px 16px;
+}
+
+.history-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.history-actions-end {
+  justify-content: flex-end;
+}
+
+.history-action-button {
+  min-width: 72px;
+}
+
+/* 履歴の中の種目ごとの集計（広い画面では2列） */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+@media (min-width: 560px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---- 草グラフ（ユーザーのアイコンから開くシートの上）。1列が1週（上が月曜） ---- */
+.grass {
+  display: grid;
+  gap: 8px;
+}
+
+.grass-grid {
+  display: flex;
+  gap: 3px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.grass-days,
+.grass-week {
+  display: grid;
+  grid-template-rows: 14px repeat(7, 12px);
+  gap: 3px;
+  flex: 0 0 auto;
+}
+
+.grass-days span {
+  width: 14px;
+  color: var(--ls-subtext);
+  font-size: 9px;
+  line-height: 12px;
+}
+
+.grass-month {
+  width: 12px;
+  overflow: visible;
+  color: var(--ls-subtext);
+  font-size: 9px;
+  line-height: 14px;
+  white-space: nowrap;
+}
+
+.grass-cell {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  background: var(--ls-accent);
+}
+
+.grass-cell.is-level-0 {
+  background: var(--ls-line);
+}
+
+.grass-cell.is-level-1 {
+  opacity: 0.3;
+}
+
+.grass-cell.is-level-2 {
+  opacity: 0.55;
+}
+
+.grass-cell.is-level-3 {
+  opacity: 0.8;
+}
+
+.grass-cell.is-future {
+  background: transparent;
+}
+
+.grass-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px 12px;
+}
+
+.grass-stats {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.grass-legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin: 0;
+  color: var(--ls-subtext);
+  font-size: 10px;
+}
+
+.grass-legend .grass-cell {
+  width: 10px;
+  height: 10px;
+}
+
+/* ---- 表示設定：色えらび（丸い色見本）と HEX ---- */
+.settings-color-row {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.color-input {
+  width: 100%;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.color-input::-webkit-color-swatch {
+  border: 0;
+  border-radius: 999px;
+}
+
+.color-input::-moz-color-swatch {
+  border: 0;
+  border-radius: 999px;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ---- トレーニングメニューのシート：上に保存、下の一覧だけスクロール ---- */
+.menu-sheet {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.menu-save-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.menu-scroll {
+  display: grid;
+  flex: 1 1 auto;
+  align-content: start;
+  gap: 8px;
+  min-height: 0;
+  margin: 0 -4px;
+  padding: 0 4px 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.menu-section-title {
+  margin: 6px 0 0;
+  color: var(--ls-subtext);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.menu-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 8px;
+}
+
+.menu-meta {
+  color: var(--ls-subtext);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* 種目の並びは1行で省略（Q キットの ls-list-item の small） */
+.menu-list .ls-list-item small {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* ---- ランキング（デバッグ用のモック） ---- */
+.ranking-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.ranking-card {
+  padding: 16px;
+  border: 1px solid var(--kq-outline);
+  border-radius: var(--ls-radius-lg);
+  background: var(--kq-surface);
+}
+
+.ranking-card h4 {
+  margin: 0 0 10px;
+}
+
+.ranking-stack {
+  display: grid;
+  gap: 8px;
+}
+
+.ranking-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ranking-meta {
+  color: var(--ls-subtext);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
