@@ -76,8 +76,26 @@
 }
 
 .talk-carousel-item .preview-bubble {
+  display: flex;
+  flex-direction: column;
   height: 100%;
   margin: 0;
+}
+
+.preview-bubble-button {
+  display: block;
+  margin: 0 0 6px;
+  padding: 7px 8px;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ls-accent-strong, var(--ls-accent));
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+/* 横並びのカードは LINE ではいちばん縦長のカードの高さにそろい、下の帯はカードの下に付く */
+.talk-carousel-item .preview-bubble-footer {
+  margin-top: auto;
 }
 
 /* ---- 送るカードの見本（Flex Message と同じ並び） ---- */

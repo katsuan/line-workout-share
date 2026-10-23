@@ -6,7 +6,7 @@ import {
   MAX_EXERCISES_PER_BUBBLE,
   MAX_FLEX_UNITS_PER_BUBBLE,
   MAX_SETS_PER_FLEX_EXERCISE
-} from "./constants.js?v=202610230036";
+} from "./constants.js?v=202610230237";
 import {
   deepClone,
   encodeBase64Url,
@@ -19,7 +19,7 @@ import {
   roundNumber,
   toNullableNumber,
   truncateText
-} from "./utils.js?v=202610230036";
+} from "./utils.js?v=202610230237";
 
 // 文字の長さの上限（入力欄の maxlength・送るカード・リンクの draft で同じ）
 export const TEXT_LIMITS = { title: 40, name: 60, memo: 200, catalogId: 40, muscle: 20, displayName: 20, altText: 400 };
@@ -107,16 +107,25 @@ export function calculateWorkout(workout) {
   return clonedWorkout;
 }
 
-export function estimate1rm(weight, reps) {
+function estimate1rm(weight, reps) {
   return weight + (weight * reps) / 40;
 }
 
+// 端末に残った記録（前の版・壊れたものもある）から、入力の形を作る。形のちがうところは初めの値に
+const isPlainObject = function (value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+};
+const objectsIn = function (value) {
+  return Array.isArray(value) ? value.filter(isPlainObject) : [];
+};
+
 export function hydrateWorkout(workout) {
+  const source = isPlainObject(workout) ? workout : {};
   const baseWorkout = calculateWorkout(
-    Object.assign(createEmptyWorkout(), deepClone(workout), {
-      exercises: (workout.exercises || []).map(function (exercise) {
+    Object.assign(createEmptyWorkout(), deepClone(source), {
+      exercises: objectsIn(source.exercises).map(function (exercise) {
         return Object.assign(createEmptyExercise(), exercise, {
-          sets: (exercise.sets || []).map(function (set) {
+          sets: objectsIn(exercise.sets).map(function (set) {
             return Object.assign(createEmptySet(), set);
           })
         });
@@ -506,7 +515,7 @@ function splitExercisesForFlexBubbles(exercises) {
 }
 
 // 同じ種目の前回の記録：履歴（新しい順）から、この記録以外で同じ種目（catalogId、なければ種目名）の推定RM が出ているもの
-export function findPreviousRecord(exercise, history, workoutId) {
+function findPreviousRecord(exercise, history, workoutId) {
   const sameExercise = function (other) {
     return exercise.catalogId ? other.catalogId === exercise.catalogId : String(other.name || "").trim() === String(exercise.name || "").trim();
   };

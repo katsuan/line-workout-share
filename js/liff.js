@@ -1,4 +1,4 @@
-import { APP_CONFIG, DEFAULT_USER, STORAGE_KEYS } from "./constants.js?v=202610230036";
+import { APP_CONFIG, DEFAULT_USER, STORAGE_KEYS } from "./constants.js?v=202610230237";
 
 export async function initLiff({ cachedProfile }) {
   const state = {
@@ -38,7 +38,7 @@ export async function initLiff({ cachedProfile }) {
   }
 }
 
-export async function getLiffProfile(isReady) {
+async function getLiffProfile(isReady) {
   if (!window.liff || !isReady) {
     return Object.assign({}, DEFAULT_USER);
   }
@@ -93,7 +93,7 @@ export function saveCachedProfile(profile) {
   );
 }
 
-export function isAnonymousProfile(profile) {
+function isAnonymousProfile(profile) {
   const displayName = profile ? String(profile.displayName || "").trim().toLowerCase() : "";
   return !displayName || displayName === "anonymous";
 }
@@ -109,7 +109,7 @@ export function safelyGetLiffContext() {
   return null;
 }
 
-export function isLiffShareAvailable(isReady) {
+function isLiffShareAvailable(isReady) {
   if (!window.liff || !isReady) {
     return false;
   }

@@ -9,14 +9,14 @@ import {
   MENU_PRESETS,
   MUSCLE_FILTERS,
   STORAGE_KEYS
-} from "./constants.js?v=202610230036";
+} from "./constants.js?v=202610230237";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./theme.js?v=202610230036";
+} from "./theme.js?v=202610230237";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -24,7 +24,7 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./liff.js?v=202610230036";
+} from "./liff.js?v=202610230237";
 import {
   buildMenuFromWorkout,
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
@@ -49,12 +49,12 @@ import {
   summarizeMenu,
   TEXT_LIMITS,
   unpackWorkoutDraft
-} from "./workout.js?v=202610230036";
+} from "./workout.js?v=202610230237";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./repositories.js?v=202610230036";
+} from "./repositories.js?v=202610230237";
 import {
   cssEscape,
   decodeBase64Url,
@@ -64,7 +64,7 @@ import {
   formatLocaleMetric,
   generateId,
   getTodayLocalDate
-} from "./utils.js?v=202610230036";
+} from "./utils.js?v=202610230237";
 import {
   renderButton,
   renderChip,
@@ -73,8 +73,8 @@ import {
   renderField,
   renderSheet,
   renderStartButton
-} from "./components.js?v=202610230036";
-import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610230036";
+} from "./components.js?v=202610230237";
+import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610230237";
 
 (function () {
 
@@ -117,6 +117,9 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610230036";
   const LocalStorageWorkoutRepository = createLocalStorageWorkoutRepository(hydrateWorkout);
   const ApiWorkoutRepository = createApiWorkoutRepository(resolveGroupKey, mockRanking);
   const MenuRepository = createLocalStorageMenuRepository();
+
+  // 送り先を選んでいるあいだにもう一度押されても、送る画面は1つだけ
+  let sharing = false;
 
   document.addEventListener("DOMContentLoaded", initApp);
 
@@ -516,13 +519,18 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610230036";
     };
   }
 
+  // 入力を入れかえて、最初の種目を開く
+  function setWorkout(workout) {
+    appState.workout = workout;
+    appState.ui.expandedExerciseId = workout.exercises[0] ? workout.exercises[0].exerciseId : "";
+  }
+
   // 入力中の内容を別のもの（履歴・メニュー・サンプル・空）に入れ替える。最初の種目を開いて入力タブへ。
   // 種目を入力していたときは、確かめる代わりにトーストの「元に戻す」で前の入力に戻せる
   function replaceWorkout(workout, message) {
     const undo = countNamedExercises(appState.workout) > 0 ? undoInputChange() : null;
-    appState.workout = workout;
+    setWorkout(workout);
     syncWorkoutUser();
-    appState.ui.expandedExerciseId = workout.exercises[0] ? workout.exercises[0].exerciseId : "";
     appState.activeTab = "input";
     renderWorkoutViews();
     notify(message, "info", undo);
@@ -538,6 +546,18 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610230036";
   }
 
   async function shareWorkout(workout) {
+    if (sharing) {
+      return;
+    }
+    sharing = true;
+    try {
+      await shareWorkoutOnce(workout);
+    } finally {
+      sharing = false;
+    }
+  }
+
+  async function shareWorkoutOnce(workout) {
     const validation = validateWorkout(workout);
     if (!validation.valid) {
       notify(validation.errors.join(" "), "error");
@@ -549,10 +569,6 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610230036";
 
     const shareableWorkout = createShareSnapshot(validation.workout);
     const message = buildWorkoutFlexMessage(shareableWorkout);
-
-    await saveWorkout(shareableWorkout);
-    appState.history = loadWorkoutHistory();
-    renderHistory();
 
     if (!appState.liff.ready || !appState.liff.shareAvailable) {
       appState.activeTab = "preview";
@@ -581,6 +597,10 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610230036";
     try {
       const result = await window.liff.shareTargetPicker([message]);
       if (result) {
+        // 履歴に残すのは送れたときだけ（送るのをやめた記録が、履歴・次の「前回」に入らないように）
+        await saveWorkout(shareableWorkout);
+        appState.history = loadWorkoutHistory();
+        renderHistory();
         // 送った記録は、次に開いたときの「前回の続き」にしない
         sentDraft = JSON.stringify(packWorkoutDraft(appState.workout));
         keepLocalDraft();
@@ -1333,16 +1353,8 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610230036";
       notify("メニューのリンクが読めませんでした（途中で切れていないか確かめてね）。", "warn");
       return false;
     }
-    const before = appState.workout;
-    appState.workout = workout;
-    appState.ui.expandedExerciseId = workout.exercises[0] ? workout.exercises[0].exerciseId : "";
-    renderInput();
-    renderPreview();
-    notify("送られたメニューを入れました。重さ・回数は自分に合わせて直してね。", "info", function () {
-      appState.workout = before;
-      renderInput();
-      renderPreview();
-    });
+    // 前の入力は「元に戻す」で戻せる（開いている種目・タブも戻す）
+    replaceWorkout(workout, "送られたメニューを入れました。重さ・回数は自分に合わせて直してね。");
     return true;
   }
 
@@ -1370,8 +1382,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610230036";
       if (!workout) {
         return;
       }
-      appState.workout = workout;
-      appState.ui.expandedExerciseId = workout.exercises[0] ? workout.exercises[0].exerciseId : "";
+      setWorkout(workout);
       notify("入力していた記録を戻しました。", "info");
       return true;
     } catch (error) {
@@ -1402,8 +1413,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610230036";
       if (!workout) {
         return false;
       }
-      appState.workout = workout;
-      appState.ui.expandedExerciseId = workout.exercises[0] ? workout.exercises[0].exerciseId : "";
+      setWorkout(workout);
       return true;
     } catch (error) {
       return false;
@@ -2185,6 +2195,10 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610230036";
     const userText =
       headerMetaBox && headerMetaBox.contents[1] ? headerMetaBox.contents[1].text : "";
     const titleText = headerContents[1] ? headerContents[1].text : resolveWorkoutTitle(workout.title, workout.user);
+    // 下の帯のボタン（最後のカードの「同じメニューでやる」）も、送るカードと同じに出す
+    const footerButtons = (bubble.footer && bubble.footer.contents ? bubble.footer.contents : []).filter(function (item) {
+      return item.type === "button" && item.action && item.action.label;
+    });
     return [
       '<section class="preview-bubble">',
       '  <div class="preview-bubble-header">',
@@ -2240,6 +2254,11 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610230036";
         })
         .join(""),
       '  <div class="preview-bubble-footer">' +
+      footerButtons
+        .map(function (button) {
+          return '<span class="preview-bubble-button">' + escapeHtml(button.action.label) + "</span>";
+        })
+        .join("") +
       escapeHtml(getCreditText()) +
       "</div>",
       "</section>"

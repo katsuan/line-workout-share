@@ -1,4 +1,4 @@
-import { DEFAULT_THEME, FLEX_THEME, STORAGE_KEYS } from "./constants.js?v=202610230036";
+import { DEFAULT_THEME, FLEX_THEME, STORAGE_KEYS } from "./constants.js?v=202610230237";
 
 export function loadThemePreference() {
   try {
@@ -32,7 +32,7 @@ export function applyTheme(baseColor) {
   });
 }
 
-export function buildThemePalette(baseColor) {
+function buildThemePalette(baseColor) {
   return {
     "--ls-accent": baseColor,
     "--ls-accent-strong": adjustColorLightness(baseColor, -0.12),

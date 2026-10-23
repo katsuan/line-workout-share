@@ -1,4 +1,14 @@
-import { FEATURE_FLAGS, MAX_HISTORY_ITEMS, MAX_MENUS, STORAGE_KEYS } from "./constants.js?v=202610230036";
+import { FEATURE_FLAGS, MAX_HISTORY_ITEMS, MAX_MENUS, STORAGE_KEYS } from "./constants.js?v=202610230237";
+
+// 端末に書く。残せない（容量いっぱい・プライベートブラウズ）ときも止めない（送る・画面はそのまま使える）
+function writeList(key, list) {
+  try {
+    localStorage.setItem(key, JSON.stringify(list));
+  } catch (error) {
+    console.warn("Failed to keep " + key + ":", error);
+  }
+  return list;
+}
 
 export function createLocalStorageWorkoutRepository(hydrateWorkout) {
   return {
@@ -12,8 +22,7 @@ export function createLocalStorageWorkoutRepository(hydrateWorkout) {
       });
 
       list.unshift(hydrateWorkout(workout));
-      const trimmed = list.slice(0, MAX_HISTORY_ITEMS);
-      localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(trimmed));
+      writeList(STORAGE_KEYS.history, list.slice(0, MAX_HISTORY_ITEMS));
       return workout;
     },
     loadAll: function () {
@@ -30,7 +39,12 @@ export function createLocalStorageWorkoutRepository(hydrateWorkout) {
         if (!Array.isArray(parsed)) {
           return [];
         }
-        return parsed.map(hydrateWorkout);
+        // 壊れた記録（記録の形でないもの）は飛ばし、読める記録だけ出す
+        return parsed
+          .filter(function (item) {
+            return Boolean(item) && typeof item === "object" && !Array.isArray(item);
+          })
+          .map(hydrateWorkout);
       } catch (error) {
         console.warn("Failed to parse local history:", error);
         return [];
@@ -50,8 +64,7 @@ export function createLocalStorageWorkoutRepository(hydrateWorkout) {
     },
     // 一覧をまるごと入れ替える（消したあとの「元に戻す」）
     replaceAll: function (list) {
-      localStorage.setItem(STORAGE_KEYS.history, JSON.stringify(list));
-      return list;
+      return writeList(STORAGE_KEYS.history, list);
     }
   };
 }
@@ -107,8 +120,7 @@ export function createLocalStorageMenuRepository() {
     },
     // 一覧をまるごと入れ替える（消す・上書きしたあとの「元に戻す」）
     replaceAll: function (list) {
-      localStorage.setItem(STORAGE_KEYS.menus, JSON.stringify(list));
-      return list;
+      return writeList(STORAGE_KEYS.menus, list);
     }
   };
 }
