@@ -1,5 +1,5 @@
 // 見本のデータ（「サンプルを入れる」と、ランキングのモック）
-import { generateId, getTodayLocalDate } from "./utils.js?v=202610222220";
+import { generateId, getTodayLocalDate } from "./utils.js?v=202610230036";
 
 export function buildSampleWorkout(options) {
   const timestamp = new Date().toISOString();

@@ -6,9 +6,10 @@ import {
   MAX_EXERCISES_PER_BUBBLE,
   MAX_FLEX_UNITS_PER_BUBBLE,
   MAX_SETS_PER_FLEX_EXERCISE
-} from "./constants.js?v=202610222220";
+} from "./constants.js?v=202610230036";
 import {
   deepClone,
+  encodeBase64Url,
   formatFlexWeight,
   formatMetric,
   generateId,
@@ -18,7 +19,7 @@ import {
   roundNumber,
   toNullableNumber,
   truncateText
-} from "./utils.js?v=202610222220";
+} from "./utils.js?v=202610230036";
 
 // 文字の長さの上限（入力欄の maxlength・送るカード・リンクの draft で同じ）
 export const TEXT_LIMITS = { title: 40, name: 60, memo: 200, catalogId: 40, muscle: 20, displayName: 20, altText: 400 };
@@ -332,7 +333,10 @@ function buildWorkoutBubble(workout, exercises, bubbleIndex, bubbleCount, theme)
       type: "box",
       layout: "vertical",
       paddingAll: "5px",
+      spacing: "xs",
       contents: [
+        // 最後のカードに「同じメニューでやる」（受けとった人がキロっくで同じ種目・セットから始められる）
+        ...(bubbleIndex === bubbleCount - 1 ? buildSameMenuButton(workout) : []),
         {
           type: "text",
           text: getCreditText(),
@@ -575,6 +579,51 @@ function buildWorkoutAltText(workout) {
 function shouldShowWorkoutUser(workout) {
   const displayName = workout && workout.user ? String(workout.user.displayName || "").trim() : "";
   return Boolean(displayName) && displayName.toLowerCase() !== "anonymous";
+}
+
+// 受けとった人が、同じ種目・セットで始められるリンク（?menu=）。メモは入れない（自分用の書きこみのため）。
+// LINE のボタンの URL は 1000 字まで：入らなければ重さを外し、それでも入らなければ種目を減らす。どうしても入らなければ null
+export const SAME_MENU_URL_MAX = 1000;
+export function buildSameMenuUrl(workout) {
+  const launchUrl = buildLiffLaunchUrl();
+  const packed = packWorkoutDraft(workout);
+  if (!launchUrl || !packed) {
+    return null;
+  }
+  const rows = packed.e.map(function (row) {
+    return [row[0], row[1], row[2], "", row[4]].concat(row.slice(5));
+  });
+  const urlOf = function (list) {
+    return launchUrl + "?menu=" + encodeBase64Url(JSON.stringify({ t: packed.t, e: list }));
+  };
+  const withoutWeights = rows.map(function (row) {
+    return [row[0], row[1], row[2], "", row[4].map(function (set) { return ["", set[1]]; })].concat(row.slice(5));
+  });
+  for (const list of [rows, withoutWeights]) {
+    for (let n = list.length; n >= 1; n--) {
+      const url = urlOf(list.slice(0, n));
+      if (url.length <= SAME_MENU_URL_MAX) {
+        return url;
+      }
+    }
+  }
+  return null;
+}
+
+function buildSameMenuButton(workout) {
+  const url = buildSameMenuUrl(workout);
+  if (!url) {
+    return [];
+  }
+  return [
+    {
+      type: "button",
+      style: "secondary",
+      height: "sm",
+      color: "#FFFFFF",
+      action: { type: "uri", label: "🏋️ 同じメニューでやる", uri: url }
+    }
+  ];
 }
 
 function buildLiffFooterAction() {

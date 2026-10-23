@@ -1,4 +1,4 @@
-import { FEATURE_FLAGS, MAX_HISTORY_ITEMS, MAX_MENUS, STORAGE_KEYS } from "./constants.js?v=202610222220";
+import { FEATURE_FLAGS, MAX_HISTORY_ITEMS, MAX_MENUS, STORAGE_KEYS } from "./constants.js?v=202610230036";
 
 export function createLocalStorageWorkoutRepository(hydrateWorkout) {
   return {

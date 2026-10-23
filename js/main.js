@@ -4,18 +4,19 @@ import {
   DEFAULT_USER,
   EXERCISE_CATALOG,
   FEATURE_FLAGS,
+  MAX_HISTORY_ITEMS,
   MAX_MENUS,
   MENU_PRESETS,
   MUSCLE_FILTERS,
   STORAGE_KEYS
-} from "./constants.js?v=202610222220";
+} from "./constants.js?v=202610230036";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./theme.js?v=202610222220";
+} from "./theme.js?v=202610230036";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -23,7 +24,7 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./liff.js?v=202610222220";
+} from "./liff.js?v=202610230036";
 import {
   buildMenuFromWorkout,
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
@@ -48,12 +49,12 @@ import {
   summarizeMenu,
   TEXT_LIMITS,
   unpackWorkoutDraft
-} from "./workout.js?v=202610222220";
+} from "./workout.js?v=202610230036";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./repositories.js?v=202610222220";
+} from "./repositories.js?v=202610230036";
 import {
   cssEscape,
   decodeBase64Url,
@@ -63,7 +64,7 @@ import {
   formatLocaleMetric,
   generateId,
   getTodayLocalDate
-} from "./utils.js?v=202610222220";
+} from "./utils.js?v=202610230036";
 import {
   renderButton,
   renderChip,
@@ -72,8 +73,8 @@ import {
   renderField,
   renderSheet,
   renderStartButton
-} from "./components.js?v=202610222220";
-import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610222220";
+} from "./components.js?v=202610230036";
+import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610230036";
 
 (function () {
 
@@ -715,7 +716,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610222220";
     }
 
     if (!appState.history.length) {
-      elements.tabHistory.innerHTML = renderEmpty("🕘", "まだ履歴がありません。共有後にここへ表示されます。");
+      elements.tabHistory.innerHTML = renderEmpty("🕘", "まだ履歴がありません。共有後にここへ表示されます（この端末に、新しいものから " + MAX_HISTORY_ITEMS + " 件まで残ります）。");
       return;
     }
 
@@ -736,9 +737,10 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610222220";
 
     const html = [
       '<div class="history-tools">',
-      '  <p class="history-tools-count">' + escapeHtml(String(appState.history.length)) + "件の記録</p>",
+      '  <p class="history-tools-count">' + escapeHtml(String(appState.history.length)) + " / " + MAX_HISTORY_ITEMS + "件の記録</p>",
       renderButton({ label: "⬇ 記録をダウンロード", action: "download-history" }),
       "</div>",
+      '<p class="ls-hint small history-limit">この端末に残るのは、新しいものから ' + MAX_HISTORY_ITEMS + " 件までです。それより古い記録は消えるので、残したいときは「記録をダウンロード」で控えを。</p>",
       '<div class="ls-folds">',
       months
         .map(function (key, index) {
@@ -1311,8 +1313,43 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610222220";
     }
   }
 
-  // ?draft=（LINE アプリで開いたとき）か、ログイン前に残した記録があれば、入力に戻す
+  // ?draft=（LINE アプリで開いたとき）か、ログイン前に残した記録があれば、入力に戻す。
+  // 送られたカードの「同じメニューでやる」（?menu=）なら、そのメニューを入れる（前の入力は「元に戻す」で戻せる）
+  function takeSharedMenu() {
+    const url = new URL(window.location.href);
+    const raw = url.searchParams.get("menu") || "";
+    if (!url.searchParams.has("menu")) {
+      return false;
+    }
+    url.searchParams.delete("menu");
+    history.replaceState(null, "", url);
+    let workout = null;
+    try {
+      workout = raw.length <= 4000 ? unpackWorkoutDraft(JSON.parse(decodeBase64Url(raw))) : null;
+    } catch (error) {
+      workout = null;
+    }
+    if (!workout) {
+      notify("メニューのリンクが読めませんでした（途中で切れていないか確かめてね）。", "warn");
+      return false;
+    }
+    const before = appState.workout;
+    appState.workout = workout;
+    appState.ui.expandedExerciseId = workout.exercises[0] ? workout.exercises[0].exerciseId : "";
+    renderInput();
+    renderPreview();
+    notify("送られたメニューを入れました。重さ・回数は自分に合わせて直してね。", "info", function () {
+      appState.workout = before;
+      renderInput();
+      renderPreview();
+    });
+    return true;
+  }
+
   function restoreCarriedDraft() {
+    if (takeSharedMenu()) {
+      return true;
+    }
     let raw = "";
     try {
       raw = new URLSearchParams(window.location.search).get("draft") || sessionStorage.getItem(DRAFT_KEY) || "";

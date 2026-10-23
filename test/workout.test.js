@@ -94,3 +94,44 @@ test("送るカード：draft から読んだ記録も受けつける形", () =>
 test("escapeHtml は < > \" ' & を文字にする", () => {
   assert.equal(U.escapeHtml(XSS + "\"'&"), "&lt;" + XSS.slice(1, -1) + "&gt;&quot;&#39;&amp;");
 });
+
+test("送るカードの最後に「同じメニューでやる」。開くと同じ種目・セットが入り、メモは渡さない", () => {
+  const w = W.createWorkoutFromMenu({ name: "胸の日", exercises: [
+    { name: "ベンチプレス", memo: "肩が少し痛い", sets: [{ weight: 60, reps: 10 }, { weight: 70, reps: 8 }] },
+    { name: "ダンベルフライ", sets: [{ weight: 12, reps: 12 }] }
+  ] });
+  const msg = W.buildWorkoutFlexMessage(w, null, () => "", []);
+  const bubbles = msg.contents.type === "carousel" ? msg.contents.contents : [msg.contents];
+  const last = bubbles[bubbles.length - 1];
+  const button = last.footer.contents.find((c) => c.type === "button");
+  assert.ok(button, "最後のカードにボタンがある");
+  assert.equal(button.action.label, "🏋️ 同じメニューでやる");
+  const url = new URL(button.action.uri);
+  assert.equal(url.origin + url.pathname, "https://liff.line.me/2009927582-2isjfmkk");
+  const back = readDraft(url.searchParams.get("menu"));
+  assert.deepEqual(back.exercises.map((e) => e.name), ["ベンチプレス", "ダンベルフライ"]);
+  assert.deepEqual(back.exercises[0].sets.map((s) => [s.weight, s.reps]), [[60, 10], [70, 8]]);
+  assert.equal(back.exercises[0].memo, "");
+  assert.deepEqual(errorsOf(msg), []);
+});
+
+test("「同じメニューでやる」の URL は 1000 字まで（多いときは重さを外し、種目を減らす）", () => {
+  const many = W.createWorkoutFromMenu({ name: "x".repeat(40), exercises: Array.from({ length: 20 }, (_, i) => ({
+    name: "とても長い種目の名前".repeat(5) + i,
+    sets: Array.from({ length: 8 }, () => ({ weight: 100.5, reps: 10 }))
+  })) });
+  const url = W.buildSameMenuUrl(many);
+  assert.ok(url && url.length <= W.SAME_MENU_URL_MAX, String(url && url.length));
+  const back = readDraft(new URL(url).searchParams.get("menu"));
+  assert.ok(back.exercises.length >= 1);
+  const msg = W.buildWorkoutFlexMessage(many, null, () => "", []);
+  assert.deepEqual(errorsOf(msg), []);
+});
+
+test("「同じメニューでやる」のリンクに危ない文字を入れても、読みこみで形をそろえる", () => {
+  const raw = pack({ t: XSS, e: [[XSS, XSS, XSS, XSS, [[XSS, "1e9"]]]] });
+  const back = readDraft(raw);
+  assert.ok(back);
+  assert.equal(typeof back.exercises[0].name, "string");
+  assert.equal(back.exercises[0].sets[0].weight, "");
+});
