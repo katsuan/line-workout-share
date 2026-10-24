@@ -9,14 +9,14 @@ import {
   MENU_PRESETS,
   MUSCLE_FILTERS,
   STORAGE_KEYS
-} from "./constants.js?v=202610230237";
+} from "./constants.js?v=202610241329";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./theme.js?v=202610230237";
+} from "./theme.js?v=202610241329";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -24,7 +24,7 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./liff.js?v=202610230237";
+} from "./liff.js?v=202610241329";
 import {
   buildMenuFromWorkout,
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
@@ -49,12 +49,12 @@ import {
   summarizeMenu,
   TEXT_LIMITS,
   unpackWorkoutDraft
-} from "./workout.js?v=202610230237";
+} from "./workout.js?v=202610241329";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./repositories.js?v=202610230237";
+} from "./repositories.js?v=202610241329";
 import {
   cssEscape,
   decodeBase64Url,
@@ -63,8 +63,9 @@ import {
   escapeHtml,
   formatLocaleMetric,
   generateId,
-  getTodayLocalDate
-} from "./utils.js?v=202610230237";
+  getTodayLocalDate,
+  seasonal
+} from "./utils.js?v=202610241329";
 import {
   renderButton,
   renderChip,
@@ -73,8 +74,8 @@ import {
   renderField,
   renderSheet,
   renderStartButton
-} from "./components.js?v=202610230237";
-import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610230237";
+} from "./components.js?v=202610241329";
+import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610241329";
 
 (function () {
 
@@ -612,7 +613,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610230237";
             }
           });
         } else {
-          notify("送りました。", "info");
+          notify(seasonal("送りました。"), "info");
         }
       } else {
         notify("送るのをやめました。入れた記録は残っています。", "info");
@@ -1981,7 +1982,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610230237";
     const undo = existing ? undoMenuChange() : null;
     appState.menus = MenuRepository.save(buildMenuFromWorkout(appState.workout, name, existing && existing.menuId));
     renderInput();
-    notify("「" + name + "」をメニューに" + (existing ? "上書き" : "保存") + "しました。", "info", undo);
+    notify(seasonal("「" + name + "」をメニューに" + (existing ? "上書き" : "保存") + "しました。"), "info", undo);
   }
 
   function applyMenu(menuId) {

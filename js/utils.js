@@ -1,4 +1,14 @@
 // 推定1RM・ボリュームを計算できるセット（重さも回数も 1 以上）
+// 季節の絵文字（Q キットの season.js。tool-share.js があとから読む）を、うれしい瞬間の短い文にときどき足す。
+// なくても・止まっても、文はそのまま
+export function seasonal(text) {
+  try {
+    return window.QSeason ? window.QSeason.decorate(text) : text;
+  } catch (error) {
+    return text;
+  }
+}
+
 export function isValidSetInput(weight, reps) {
   return weight !== null && reps !== null && weight > 0 && reps > 0;
 }

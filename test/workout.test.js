@@ -135,3 +135,13 @@ test("「同じメニューでやる」のリンクに危ない文字を入れ�
   assert.equal(typeof back.exercises[0].name, "string");
   assert.equal(back.exercises[0].sets[0].weight, "");
 });
+
+test("季節の絵文字：QSeason があればつけ、なければ・止まったらそのまま", () => {
+  delete window.QSeason;
+  assert.equal(U.seasonal("送りました。"), "送りました。");
+  window.QSeason = { decorate: (t) => t + " 🎃" };
+  assert.equal(U.seasonal("送りました。"), "送りました。 🎃");
+  window.QSeason = { decorate() { throw new Error("x"); } };
+  assert.equal(U.seasonal("送りました。"), "送りました。");
+  delete window.QSeason;
+});

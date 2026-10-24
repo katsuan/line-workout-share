@@ -1,5 +1,5 @@
 // 画面の部品（HTML 文字列を返すだけ。状態は持たない）。見た目はおくるんの Q キット（ls-*）にそろえる
-import { escapeHtml } from "./utils.js?v=202610230237";
+import { escapeHtml } from "./utils.js?v=202610241329";
 
 function renderAttributes(attrs) {
   return Object.keys(attrs || {})
