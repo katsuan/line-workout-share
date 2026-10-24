@@ -3,17 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>キロっく｜筋トレの記録を LINE で送る</title>
+    <title>キロっく｜筋トレを記録して、送る</title>
     <meta name="description" content="キロっく（kiloQ）。筋トレの種目・重さ・回数を記録して、LINE にカードで送れます。" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="キロっく｜筋トレの記録を LINE で送る" />
+    <meta property="og:title" content="キロっく｜筋トレを記録して、送る" />
     <meta property="og:description" content="筋トレの種目・重さ・回数を記録して、LINE にカードで送れます。" />
     <meta property="og:url" content="https://katsuan.github.io/line-workout-share/" />
     <meta property="og:site_name" content="キロっく（kiloQ）" />
     <meta property="og:image" content="https://katsuan.github.io/line-workout-share/ogp.png?v=20261019" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="キロっく（kiloQ）：筋トレの種目・重さ・回数を LINE にカードで送れる" />
+    <meta property="og:image:alt" content="キロっく（kiloQ）：筋トレの種目・重さ・回数を記録して、カードで送れる" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="theme-color" content="#f7f4ef" media="(prefers-color-scheme: light)">
     <meta name="theme-color" content="#16151a" media="(prefers-color-scheme: dark)">
@@ -24,11 +24,11 @@
     <link rel="manifest" href="./manifest.webmanifest" />
     <!-- 部品（見出しの行・タブ・カード・チップ・入力欄・ボタン・開閉・シート・送る帯・トースト）はおくるんの Q キット。キロっくの CSS より前に読む -->
     <link rel="stylesheet" href="https://katsuan.github.io/line-share/shared/ui.css" />
-    <link rel="stylesheet" href="./style.css?v=202610241400" />
+    <link rel="stylesheet" href="./style.css?v=202610241428" />
     <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
     <script src="https://katsuan.github.io/line-share/shared/ui.js" defer></script>
-    <script src="./config.js?v=202610241400"></script>
-    <script type="module" src="./app.js?v=202610241400"></script>
+    <script src="./config.js?v=202610241428"></script>
+    <script type="module" src="./app.js?v=202610241428"></script>
     <script src="https://katsuan.github.io/line-share/shared/tool-share.js" data-tool="kiloq" defer></script>
   </head>
   <body>
@@ -64,24 +64,24 @@
     <!-- 下に固定する送る帯（Q キットの ls-sendbar。文字の入力中はキーボードと重ならないよう隠れる） -->
     <div class="ls-sendbar" id="action-bar">
       <div class="ls-sendbar-inner">
-        <!-- LINE の外で開いたとき（送り先選びが使えないとき）だけ出す。ログインか LINE アプリで送れる環境へ移る。入力は持っていく -->
+        <!-- ブラウザ版（送り先選びが使えないとき）だけ出す。ログインか LINE 版へ移る。入力は持っていく -->
         <div class="ls-outside" id="line-help" hidden>
-          <p class="ls-outside-text">LINE の外で開いています。送るには：</p>
+          <p class="ls-outside-text">ここでは見本だけ。送るときは：</p>
           <div class="ls-outside-actions">
             <button class="ls-outside-button" id="line-login-button" data-action="line-login" type="button">🔑 ログインして送る</button>
-            <a class="ls-outside-button is-app" id="line-app-link" href="#">💬 LINE アプリで開く</a>
+            <a class="ls-outside-button is-app" id="line-app-link" href="#">💬 LINE 版で開く</a>
           </div>
         </div>
         <div class="ls-sendbar-row">
           <button class="ls-send ls-send-secondary" id="copy-json-button" type="button" hidden>Flex JSONコピー</button>
-          <button class="ls-send is-line" id="share-button" type="button">💬 LINEで送る</button>
+          <button class="ls-send is-line" id="share-button" type="button">💬 カードで送る</button>
         </div>
       </div>
     </div>
     <!-- はじめて開いた人にだけ、短い使い方（Q キットの firstTip。「わかった」で消え、この端末では次から出ない） -->
     <script>
       addEventListener("load", () => {
-        window.LineShareUI?.firstTip("kiloq", ["部位 → 種目を選んで、重さと回数を入れる", "よくやる組み合わせは「メニュー」に保存できます", "「💬 LINEで送る」で、記録をカードで送れます"], document.getElementById("tab-nav"));
+        window.LineShareUI?.firstTip("kiloq", ["部位 → 種目を選んで、重さと回数を入れる", "よくやる組み合わせは「メニュー」に保存できます", "「💬 カードで送る」で、記録を送れます"], document.getElementById("tab-nav"));
       });
     </script>
     <!-- 電波がなくても開けるように（sw.js） -->

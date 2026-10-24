@@ -9,14 +9,14 @@ import {
   MENU_PRESETS,
   MUSCLE_FILTERS,
   STORAGE_KEYS
-} from "./constants.js?v=202610241400";
+} from "./constants.js?v=202610241428";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./theme.js?v=202610241400";
+} from "./theme.js?v=202610241428";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -24,7 +24,7 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./liff.js?v=202610241400";
+} from "./liff.js?v=202610241428";
 import {
   buildMenuFromWorkout,
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
@@ -50,12 +50,12 @@ import {
   summarizeMenu,
   TEXT_LIMITS,
   unpackWorkoutDraft
-} from "./workout.js?v=202610241400";
+} from "./workout.js?v=202610241428";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./repositories.js?v=202610241400";
+} from "./repositories.js?v=202610241428";
 import {
   cssEscape,
   deepClone,
@@ -65,7 +65,7 @@ import {
   generateId,
   getTodayLocalDate,
   seasonal
-} from "./utils.js?v=202610241400";
+} from "./utils.js?v=202610241428";
 import {
   renderButton,
   renderChip,
@@ -74,8 +74,8 @@ import {
   renderField,
   renderSheet,
   renderStartButton
-} from "./components.js?v=202610241400";
-import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610241400";
+} from "./components.js?v=202610241428";
+import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610241428";
 
 (function () {
 
@@ -169,7 +169,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610241400";
       notify(
         isDebugModeEnabled()
           ? "共有機能を使えないため、プレビュー中心で起動しました。デバッグ用のJSON確認は利用できます。"
-          : "LINE とつながらないため、送る前の確認だけできます。",
+          : "ここでは見本だけ。送るときは LINE 版で。",
         "warn"
       );
     }
@@ -591,7 +591,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610241400";
           );
         }
       } else {
-        notify("LINE の外では送れません。下の「ログインして送る」か「LINE アプリで開く」から送れます。", "warn");
+        notify("ここでは見本だけ。送るときは、下の「ログインして送る」か「LINE 版で開く」から。", "warn");
       }
       return;
     }
@@ -867,7 +867,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610241400";
       }
       try {
         await navigator.clipboard.writeText(csv);
-        notify("LINE の中では保存できないので、記録（CSV）をコピーしました。メモやスプレッドシートに貼り付けてください。", "info");
+        notify("LINE 版ではファイルに保存できないので、記録（CSV）をコピーしました。メモやスプレッドシートに貼ってね。", "info");
       } catch (error) {
         notify("ダウンロードできませんでした。ブラウザで開くと保存できます。", "warn");
       }
@@ -1331,7 +1331,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610241400";
       console.warn("Failed to keep draft:", error);
     }
     if (!loginWithLine()) {
-      notify("LINE のログインを始められませんでした。少し待って、もう一度押してね。", "warn");
+      notify("ログインを始められませんでした。少し待って、もう一度押してね。", "warn");
     }
   }
 
