@@ -6,8 +6,9 @@ import {
   MAX_EXERCISES_PER_BUBBLE,
   MAX_FLEX_UNITS_PER_BUBBLE,
   MAX_SETS_PER_FLEX_EXERCISE
-} from "./constants.js?v=202610241329";
+} from "./constants.js?v=202610241400";
 import {
+  decodeBase64Url,
   deepClone,
   encodeBase64Url,
   formatFlexWeight,
@@ -19,7 +20,7 @@ import {
   roundNumber,
   toNullableNumber,
   truncateText
-} from "./utils.js?v=202610241329";
+} from "./utils.js?v=202610241400";
 
 // 文字の長さの上限（入力欄の maxlength・送るカード・リンクの draft で同じ）
 export const TEXT_LIMITS = { title: 40, name: 60, memo: 200, catalogId: 40, muscle: 20, displayName: 20, altText: 400 };
@@ -756,6 +757,18 @@ export function packWorkoutDraft(workout) {
     return null;
   }
   return { t: workout.title || "", e: exercises.slice(0, 20) };
+}
+
+// リンク（?draft=・?menu=）の文字（base64url の JSON）から記録に戻す。読めない・maxLength より長いときは null
+export function readPackedWorkout(raw, maxLength = Infinity) {
+  if (typeof raw !== "string" || !raw || raw.length > maxLength) {
+    return null;
+  }
+  try {
+    return unpackWorkoutDraft(JSON.parse(decodeBase64Url(raw)));
+  } catch (error) {
+    return null;
+  }
 }
 
 // リンク（?draft=）や端末から読む作りかけ。外から来た中身なので、形・長さ・数の範囲を確かめてから使う

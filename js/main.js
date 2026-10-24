@@ -9,14 +9,14 @@ import {
   MENU_PRESETS,
   MUSCLE_FILTERS,
   STORAGE_KEYS
-} from "./constants.js?v=202610241329";
+} from "./constants.js?v=202610241400";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./theme.js?v=202610241329";
+} from "./theme.js?v=202610241400";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -24,7 +24,7 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./liff.js?v=202610241329";
+} from "./liff.js?v=202610241400";
 import {
   buildMenuFromWorkout,
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
@@ -44,20 +44,20 @@ import {
   isFilledSet,
   isMaxRmSet,
   packWorkoutDraft,
+  readPackedWorkout,
   resolveWorkoutTitle,
   sanitizeWorkout as sanitizeWorkoutModel,
   summarizeMenu,
   TEXT_LIMITS,
   unpackWorkoutDraft
-} from "./workout.js?v=202610241329";
+} from "./workout.js?v=202610241400";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./repositories.js?v=202610241329";
+} from "./repositories.js?v=202610241400";
 import {
   cssEscape,
-  decodeBase64Url,
   deepClone,
   encodeBase64Url,
   escapeHtml,
@@ -65,7 +65,7 @@ import {
   generateId,
   getTodayLocalDate,
   seasonal
-} from "./utils.js?v=202610241329";
+} from "./utils.js?v=202610241400";
 import {
   renderButton,
   renderChip,
@@ -74,8 +74,8 @@ import {
   renderField,
   renderSheet,
   renderStartButton
-} from "./components.js?v=202610241329";
-import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610241329";
+} from "./components.js?v=202610241400";
+import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610241400";
 
 (function () {
 
@@ -164,10 +164,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610241329";
     }
 
     const liffResult = await initLiff();
-    // ログインの行き来・LINE アプリへ移る前に入れていた記録を戻す（そちらがあれば、前回の続きより先）
-    if (!restoreCarriedDraft() && resumed) {
-      showResumed();
-    }
+    // 知らせは1つずつなので、LINE とつながらない知らせを先に出し、下の「元に戻す」「新しく作る」のある知らせで上書きする
     if (!liffResult.ready) {
       notify(
         isDebugModeEnabled()
@@ -175,6 +172,10 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610241329";
           : "LINE とつながらないため、送る前の確認だけできます。",
         "warn"
       );
+    }
+    // ログインの行き来・LINE アプリへ移る前に入れていた記録を戻す（そちらがあれば、前回の続きより先）
+    if (!restoreCarriedDraft() && resumed) {
+      showResumed();
     }
 
     syncWorkoutUser();
@@ -1334,62 +1335,53 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610241329";
     }
   }
 
-  // ?draft=（LINE アプリで開いたとき）か、ログイン前に残した記録があれば、入力に戻す。
-  // 送られたカードの「同じメニューでやる」（?menu=）なら、そのメニューを入れる（前の入力は「元に戻す」で戻せる）
-  function takeSharedMenu() {
+  // URL の ?name= を読んで、URL からは消す（開きなおしても、もう一度入れない）。なければ null
+  function takeUrlParam(name) {
     const url = new URL(window.location.href);
-    const raw = url.searchParams.get("menu") || "";
-    if (!url.searchParams.has("menu")) {
+    if (!url.searchParams.has(name)) {
+      return null;
+    }
+    const value = url.searchParams.get(name) || "";
+    url.searchParams.delete(name);
+    history.replaceState(null, "", url);
+    return value;
+  }
+
+  // 送られたカードの「同じメニューでやる」（?menu=）。リンクがあったら true（読めなかったときも、その知らせを残すため）。
+  // 入れたときは、前の入力を「元に戻す」で戻せる
+  function takeSharedMenu() {
+    const raw = takeUrlParam("menu");
+    if (raw === null) {
       return false;
     }
-    url.searchParams.delete("menu");
-    history.replaceState(null, "", url);
-    let workout = null;
-    try {
-      workout = raw.length <= 4000 ? unpackWorkoutDraft(JSON.parse(decodeBase64Url(raw))) : null;
-    } catch (error) {
-      workout = null;
-    }
+    const workout = readPackedWorkout(raw, 4000);
     if (!workout) {
       notify("メニューのリンクが読めませんでした（途中で切れていないか確かめてね）。", "warn");
-      return false;
+      return true;
     }
-    // 前の入力は「元に戻す」で戻せる（開いている種目・タブも戻す）
     replaceWorkout(workout, "送られたメニューを入れました。重さ・回数は自分に合わせて直してね。");
     return true;
   }
 
+  // ?draft=（LINE アプリで開いたとき）か、ログイン前にこのブラウザに残した記録を、入力に戻す。戻したら true
   function restoreCarriedDraft() {
     if (takeSharedMenu()) {
       return true;
     }
-    let raw = "";
+    let raw = takeUrlParam("draft") || "";
     try {
-      raw = new URLSearchParams(window.location.search).get("draft") || sessionStorage.getItem(DRAFT_KEY) || "";
+      raw = raw || sessionStorage.getItem(DRAFT_KEY) || "";
       sessionStorage.removeItem(DRAFT_KEY);
     } catch (error) {
-      raw = new URLSearchParams(window.location.search).get("draft") || "";
+      // このブラウザに残せない端末は、?draft= だけ
     }
-    const url = new URL(window.location.href);
-    if (url.searchParams.has("draft")) {
-      url.searchParams.delete("draft");
-      history.replaceState(null, "", url);
+    const workout = readPackedWorkout(raw);
+    if (!workout) {
+      return false;
     }
-    if (!raw) {
-      return;
-    }
-    try {
-      const workout = unpackWorkoutDraft(JSON.parse(decodeBase64Url(raw)));
-      if (!workout) {
-        return;
-      }
-      setWorkout(workout);
-      notify("入力していた記録を戻しました。", "info");
-      return true;
-    } catch (error) {
-      console.warn("Failed to restore draft:", error);
-    }
-    return false;
+    setWorkout(workout);
+    notify("入力していた記録を戻しました。", "info");
+    return true;
   }
 
   // ---- 作りかけ（送る前の記録）を端末に残し、次に開いたら続きから ----

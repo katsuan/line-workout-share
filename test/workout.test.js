@@ -14,14 +14,8 @@ const W = await import("../js/workout.js");
 const U = await import("../js/utils.js");
 
 const pack = (v) => U.encodeBase64Url(JSON.stringify(v));
-// main.js と同じ読み方（base64url → JSON → unpack）
-const readDraft = (raw) => {
-  try {
-    return W.unpackWorkoutDraft(JSON.parse(U.decodeBase64Url(raw)));
-  } catch {
-    return null;
-  }
-};
+// main.js と同じ読み方（base64url → JSON → unpack。読めなければ null）
+const readDraft = (raw) => W.readPackedWorkout(raw);
 const errorsOf = (message) => checkMessages([message]).filter((p) => p.level === "error");
 
 test("自分で作った draft を読み戻せる", () => {
@@ -144,4 +138,12 @@ test("季節の絵文字：QSeason があればつけ、なければ・止まっ
   window.QSeason = { decorate() { throw new Error("x"); } };
   assert.equal(U.seasonal("送りました。"), "送りました。");
   delete window.QSeason;
+});
+
+test("readPackedWorkout：リンクの文字から記録に戻す。読めない・長すぎるときは null", () => {
+  const w = W.createWorkoutFromMenu({ name: "脚の日", exercises: [{ name: "スクワット", sets: [{ weight: 80, reps: 8 }] }] });
+  const raw = pack(W.packWorkoutDraft(w));
+  assert.equal(W.readPackedWorkout(raw).exercises[0].name, "スクワット");
+  assert.equal(W.readPackedWorkout(raw, 10), null);
+  for (const bad of ["", null, undefined, "%%%", pack([1]), pack({ e: "x" })]) assert.equal(W.readPackedWorkout(bad), null);
 });
