@@ -6,7 +6,7 @@ import {
   MAX_EXERCISES_PER_BUBBLE,
   MAX_FLEX_UNITS_PER_BUBBLE,
   MAX_SETS_PER_FLEX_EXERCISE
-} from "./constants.js?v=202610241428";
+} from "./constants.js?v=202610241439";
 import {
   decodeBase64Url,
   deepClone,
@@ -20,7 +20,7 @@ import {
   roundNumber,
   toNullableNumber,
   truncateText
-} from "./utils.js?v=202610241428";
+} from "./utils.js?v=202610241439";
 
 // 文字の長さの上限（入力欄の maxlength・送るカード・リンクの draft で同じ）
 export const TEXT_LIMITS = { title: 40, name: 60, memo: 200, catalogId: 40, muscle: 20, displayName: 20, altText: 400 };
