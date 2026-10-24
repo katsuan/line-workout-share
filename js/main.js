@@ -9,14 +9,14 @@ import {
   MENU_PRESETS,
   MUSCLE_FILTERS,
   STORAGE_KEYS
-} from "./constants.js?v=202610241439";
+} from "./constants.js?v=202610241455";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./theme.js?v=202610241439";
+} from "./theme.js?v=202610241455";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -24,7 +24,7 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./liff.js?v=202610241439";
+} from "./liff.js?v=202610241455";
 import {
   buildMenuFromWorkout,
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
@@ -50,12 +50,12 @@ import {
   summarizeMenu,
   TEXT_LIMITS,
   unpackWorkoutDraft
-} from "./workout.js?v=202610241439";
+} from "./workout.js?v=202610241455";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./repositories.js?v=202610241439";
+} from "./repositories.js?v=202610241455";
 import {
   cssEscape,
   deepClone,
@@ -65,7 +65,7 @@ import {
   generateId,
   getTodayLocalDate,
   seasonal
-} from "./utils.js?v=202610241439";
+} from "./utils.js?v=202610241455";
 import {
   renderButton,
   renderChip,
@@ -74,8 +74,8 @@ import {
   renderField,
   renderSheet,
   renderStartButton
-} from "./components.js?v=202610241439";
-import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610241439";
+} from "./components.js?v=202610241455";
+import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610241455";
 
 (function () {
 
@@ -1294,7 +1294,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610241439";
       : "デバッグコピー";
   }
 
-  // ---- LINE の外で開いたとき：送れる環境（ログイン・LINE アプリ）へ移る導線 ----
+  // ---- ブラウザ版：送れる環境（ログイン・LINE 版）へ移る導線 ----
   const DRAFT_KEY = "kiloq:carry-draft";
 
   function encodedDraft() {
@@ -1309,7 +1309,7 @@ import { buildSampleWorkout, mockRanking } from "./fixtures.js?v=202610241439";
     }
     const show = appState.liff.initialized && !appState.liff.shareAvailable && !isDebugModeEnabled();
     elements.lineHelp.hidden = !show;
-    // 送れないときは「LINEで共有」を出さない（押しても送れないので、案内のログイン／LINE アプリだけにする）
+    // 送れないときは「カードで送る」を出さない（押しても送れないので、案内のログイン／LINE 版だけにする）
     elements.shareButton.hidden = show;
     if (!show) {
       return;

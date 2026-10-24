@@ -147,3 +147,13 @@ test("readPackedWorkout：リンクの文字から記録に戻す。読めない
   assert.equal(W.readPackedWorkout(raw, 10), null);
   for (const bad of ["", null, undefined, "%%%", pack([1]), pack({ e: "x" })]) assert.equal(W.readPackedWorkout(bad), null);
 });
+
+// 送るボタンの緑とおくるんのマークは Q キット（ui.css の is-line・is-oqrn）にまかせる。自前で上書きしない
+test("送るボタンの見た目を、自前の CSS で上書きしない", async () => {
+  const fs = await import("node:fs");
+  const dir = new URL("../css/", import.meta.url);
+  const css = fs.readdirSync(dir).map((f) => fs.readFileSync(new URL(f, dir), "utf8")).join("\n");
+  assert.ok(!/\.ls-send\.is-line\b/.test(css));
+  const html = fs.readFileSync(new URL("../index.html", import.meta.url), "utf8");
+  assert.match(html, /class="ls-send is-line is-oqrn" id="share-button"[^>]*>カードで送る</);
+});

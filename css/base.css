@@ -28,8 +28,6 @@
   --kq-surface-strong: #f9f5f0;
   --kq-bg-accent: #efdcc8;
   --kq-secondary: #264653;
-  --kq-line-green: #06c755;
-  --kq-line-green-dark: #05a847;
 }
 
 body {
@@ -41,7 +39,7 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* 下の送る帯の高さ（js が測って --action-bar-height に入れる）＋少しの余白。LINE の外の案内が出て帯が高くなっても最後まで見える */
+/* 下の送る帯の高さ（js が測って --action-bar-height に入れる）＋少しの余白。ブラウザ版の案内が出て帯が高くなっても最後まで見える */
 .app-shell {
   padding: 8px 10px calc(var(--action-bar-height, 110px) + 16px);
 }
@@ -114,16 +112,7 @@ body {
   scroll-margin-top: 12px;
 }
 
-/* ---- 送る帯：LINE で送るボタンは LINE の緑 ---- */
-.ls-send.is-line {
-  background: linear-gradient(135deg, var(--kq-line-green) 0%, var(--kq-line-green-dark) 100%);
-}
-
-.ls-send.is-line:active:not(:disabled) {
-  background: var(--kq-line-green-dark);
-}
-
-/* トーストは送る帯のすぐ上に（帯の高さは LINE の外の案内で変わる） */
+/* トーストは送る帯のすぐ上に（帯の高さはブラウザ版の案内で変わる） */
 body:not(.ls-has-sendbar) .ls-toast {
   bottom: calc(var(--action-bar-height, 110px) + 12px);
 }

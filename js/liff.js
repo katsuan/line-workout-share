@@ -1,4 +1,4 @@
-import { APP_CONFIG, DEFAULT_USER, STORAGE_KEYS } from "./constants.js?v=202610241439";
+import { APP_CONFIG, DEFAULT_USER, STORAGE_KEYS } from "./constants.js?v=202610241455";
 
 export async function initLiff({ cachedProfile }) {
   const state = {
@@ -129,7 +129,7 @@ function isLiffShareAvailable(isReady) {
   return true;
 }
 
-// ---- LINE の外で開いたとき、送れる環境へ移る ----
+// ---- ブラウザ版から、送れる環境へ移る ----
 
 // LINE アプリの中か、ログインしているか（送り先選びが使えない理由を分けて案内する）
 export function getLiffEnvironment() {
