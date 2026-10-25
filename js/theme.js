@@ -1,10 +1,12 @@
-
+// キロっく：表示設定の色。選んだ色から画面の色（Q キットの --ls-accent・キロっくの --kq-*）と、送るカードの色を作り、端末に覚える。
+// app.js から読む（import）
 import {
   DEFAULT_THEME,
   FLEX_THEME,
   STORAGE_KEYS
-} from "./settings.js?v=202610250234";
+} from "./settings.js?v=202610250455";
 
+// 端末に覚えた表示設定（色）を読んで返す（なければ初めの色）
 export function loadThemePreference() {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.theme);
@@ -22,6 +24,7 @@ export function loadThemePreference() {
   }
 }
 
+// 表示設定（色）を端末に覚える
 export function saveThemePreference(theme) {
   localStorage.setItem(STORAGE_KEYS.theme, JSON.stringify(theme));
 }
@@ -37,6 +40,7 @@ export function applyTheme(baseColor) {
   });
 }
 
+// 選んだ色から、Q キットの色（--ls-accent など）とキロっくの色（--kq-*）を作って返す
 function buildThemePalette(baseColor) {
   return {
     "--ls-accent": baseColor,
@@ -52,6 +56,7 @@ function buildThemePalette(baseColor) {
   };
 }
 
+// 選んだ色から、送るカードの色（見出しの帯・ふち・字）を作って返す
 export function getFlexTheme(baseColor) {
   return {
     header: baseColor,
@@ -63,6 +68,7 @@ export function getFlexTheme(baseColor) {
   };
 }
 
+// 色の文字を #rrggbb にそろえて返す（#abc も）。色でなければ ""
 export function normalizeHexColor(value) {
   const source = String(value || "").trim();
   if (!source) {
@@ -87,6 +93,7 @@ export function normalizeHexColor(value) {
   return "";
 }
 
+// #rrggbb を { r, g, b } にして返す。色でなければ null
 function hexToRgb(hex) {
   const normalized = normalizeHexColor(hex);
   if (!normalized) {
@@ -99,6 +106,7 @@ function hexToRgb(hex) {
   };
 }
 
+// { r, g, b } を #rrggbb にして返す
 function rgbToHex(rgb) {
   return (
     "#" +
@@ -111,6 +119,7 @@ function rgbToHex(rgb) {
   ).toUpperCase();
 }
 
+// 2つの色を amount（0〜1）の割合でまぜた色を返す
 function mixColors(colorA, colorB, amount) {
   const rgbA = hexToRgb(colorA);
   const rgbB = hexToRgb(colorB);
@@ -125,6 +134,7 @@ function mixColors(colorA, colorB, amount) {
   });
 }
 
+// 色を明るく（delta が正）・暗く（負）した色を返す
 function adjustColorLightness(color, delta) {
   const rgb = hexToRgb(color);
   if (!rgb) {

@@ -1,10 +1,12 @@
-
+// キロっく：LINE とつなぐところ（LIFF の準備・LINE の名前と写真・送り先選びが使えるか・ブラウザ版から LINE 版へ移る URL とログイン）。
+// app.js から読む（import）
 import {
   APP_CONFIG,
   DEFAULT_USER,
   STORAGE_KEYS
-} from "./settings.js?v=202610250234";
+} from "./settings.js?v=202610250455";
 
+// LIFF を準備して、使えるか・送れるか・LINE の名前を返す（使えないときも止めない）
 export async function initLiff({ cachedProfile }) {
   const state = {
     initialized: true,
@@ -43,6 +45,7 @@ export async function initLiff({ cachedProfile }) {
   }
 }
 
+// LINE の名前と写真を返す（使えないときは名前なし）
 async function getLiffProfile(isReady) {
   if (!window.liff || !isReady) {
     return Object.assign({}, DEFAULT_USER);
@@ -66,6 +69,7 @@ async function getLiffProfile(isReady) {
   return Object.assign({}, DEFAULT_USER);
 }
 
+// 前に覚えた LINE の名前と写真を、端末から読んで返す（ユーザー ID は読まない）
 export function loadCachedProfile() {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS.profile);
@@ -83,6 +87,7 @@ export function loadCachedProfile() {
   }
 }
 
+// LINE の名前と写真を端末に覚える（ユーザー ID は残さない。名前なしのときは残さない）
 export function saveCachedProfile(profile) {
   if (!profile || !profile.displayName || String(profile.displayName).toLowerCase() === "anonymous") {
     return;
@@ -98,11 +103,13 @@ export function saveCachedProfile(profile) {
   );
 }
 
+// 名前なし（空・anonymous）かを返す
 function isAnonymousProfile(profile) {
   const displayName = profile ? String(profile.displayName || "").trim().toLowerCase() : "";
   return !displayName || displayName === "anonymous";
 }
 
+// LIFF の開かれ方（トークの種類など）を返す。使えないときは null
 export function safelyGetLiffContext() {
   try {
     if (window.liff && typeof window.liff.getContext === "function") {
@@ -114,6 +121,7 @@ export function safelyGetLiffContext() {
   return null;
 }
 
+// 送り先選び（shareTargetPicker）が使えるかを返す
 function isLiffShareAvailable(isReady) {
   if (!window.liff || !isReady) {
     return false;

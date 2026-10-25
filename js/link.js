@@ -1,18 +1,20 @@
 // キロっく：URL の受け渡し（LINE 版を開く URL・「同じメニューでやる」の ?menu=・作りかけの ?draft=。base64url の JSON）
+// app.js・card.js から読む（import）
 import {
   APP_CONFIG
-} from "./settings.js?v=202610250234";
+} from "./settings.js?v=202610250455";
 import {
   createWorkoutFromMenu,
   getNamedExercises,
   NUMBER_MAX,
   TEXT_LIMITS
-} from "./workout.js?v=202610250234";
+} from "./workout.js?v=202610250455";
 
 // 受けとった人が、同じ種目・セットで始められるリンク（?menu=）。メモは入れない（自分用の書きこみのため）。
 // LINE のボタンの URL は 1000 字まで：入らなければ重さを外し、それでも入らなければ種目を減らす。どうしても入らなければ null
 export const SAME_MENU_URL_MAX = 1000;
 
+// 「🏋️ 同じメニューでやる」の URL を返す（1000 字に入らないときは重さを外し、種目をへらす。作れなければ null）
 export function buildSameMenuUrl(workout) {
   const launchUrl = buildLiffLaunchUrl();
   const packed = packWorkoutDraft(workout);
@@ -22,6 +24,7 @@ export function buildSameMenuUrl(workout) {
   const rows = packed.e.map(function (row) {
     return [row[0], row[1], row[2], "", row[4]].concat(row.slice(5));
   });
+  // 種目のならびから ?menu= の URL を作る
   const urlOf = function (list) {
     return launchUrl + "?menu=" + encodeBase64Url(JSON.stringify({ t: packed.t, e: list }));
   };
@@ -39,6 +42,7 @@ export function buildSameMenuUrl(workout) {
   return null;
 }
 
+// キロっくの LINE 版を開く URL（https://liff.line.me/<LIFF ID>）を返す。ID がなければ ""
 export function buildLiffLaunchUrl() {
   const liffId = String(APP_CONFIG.LIFF_ID || "").trim();
   if (!liffId || liffId === "YOUR_LIFF_ID") {
@@ -84,6 +88,7 @@ export function unpackWorkoutDraft(draft) {
   if (!draft || typeof draft !== "object" || !Array.isArray(draft.e)) {
     return null;
   }
+  // 文字なら max 字までにして返す。ちがえば ""
   const text = function (v, max) {
     return typeof v === "string" ? v.slice(0, max) : "";
   };
@@ -128,6 +133,7 @@ export function encodeBase64Url(text) {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+// base64url の文字を、もとの文字（UTF-8）にもどす
 export function decodeBase64Url(text) {
   const b64 = String(text || "").replace(/-/g, "+").replace(/_/g, "/");
   const binary = atob(b64 + "===".slice((b64.length + 3) % 4));

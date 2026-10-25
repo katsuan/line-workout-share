@@ -1,13 +1,14 @@
-// キロっく（kiloQ）：入口。画面を作り、ボタン・入力を受け、部品（js/）をつなぐ。ファイルの一覧は README
+// キロっく（kiloQ）：入口。画面（入力・送信プレビュー・履歴・シート）を作り、ボタン・入力を受け、部品（js/）をつなぐ。
+// index.html から読む（type="module"）。ファイルの一覧は README
 import {
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
   getCreditText
-} from "./js/card.js?v=202610250234";
+} from "./js/card.js?v=202610250455";
 import {
   EXERCISE_CATALOG,
   MENU_PRESETS,
   MUSCLE_FILTERS
-} from "./js/catalog.js?v=202610250234";
+} from "./js/catalog.js?v=202610250455";
 import {
   renderButton,
   renderChip,
@@ -16,16 +17,16 @@ import {
   renderField,
   renderSheet,
   renderStartButton
-} from "./js/components.js?v=202610250234";
+} from "./js/components.js?v=202610250455";
 import {
   buildSampleWorkout,
   mockRanking
-} from "./js/fixtures.js?v=202610250234";
+} from "./js/fixtures.js?v=202610250455";
 import {
   cssEscape,
   escapeHtml,
   formatLocaleMetric
-} from "./js/format.js?v=202610250234";
+} from "./js/format.js?v=202610250455";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -33,19 +34,19 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./js/liff.js?v=202610250234";
+} from "./js/liff.js?v=202610250455";
 import {
   encodeBase64Url,
   packWorkoutDraft,
   readPackedWorkout,
   unpackWorkoutDraft
-} from "./js/link.js?v=202610250234";
+} from "./js/link.js?v=202610250455";
 import {
   deepClone,
   generateId,
   getTodayLocalDate,
   seasonal
-} from "./js/page.js?v=202610250234";
+} from "./js/page.js?v=202610250455";
 import {
   APP_CONFIG,
   DEFAULT_THEME,
@@ -54,19 +55,19 @@ import {
   MAX_HISTORY_ITEMS,
   MAX_MENUS,
   STORAGE_KEYS
-} from "./js/settings.js?v=202610250234";
+} from "./js/settings.js?v=202610250455";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./js/store.js?v=202610250234";
+} from "./js/store.js?v=202610250455";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./js/theme.js?v=202610250234";
+} from "./js/theme.js?v=202610250455";
 import {
   buildMenuFromWorkout,
   calculateWorkout,
@@ -87,7 +88,7 @@ import {
   sanitizeWorkout as sanitizeWorkoutModel,
   summarizeMenu,
   TEXT_LIMITS
-} from "./js/workout.js?v=202610250234";
+} from "./js/workout.js?v=202610250455";
 
 (function () {
 
@@ -136,20 +137,24 @@ import {
 
   document.addEventListener("DOMContentLoaded", initApp);
 
+  // デバッグモード（Flex JSON のコピーなど）かを返す
   function isDebugModeEnabled() {
     return Boolean(FEATURE_FLAGS.enableDebugMode);
   }
 
+  // ランキング（デバッグ用）を出すかを返す
   function isRankingEnabled() {
     return isDebugModeEnabled() && Boolean(FEATURE_FLAGS.enableRanking);
   }
 
+  // 種目の一覧から id の種目を探して返す
   function findCatalogExercise(catalogId) {
     return EXERCISE_CATALOG.find(function (item) {
       return item.id === catalogId;
     });
   }
 
+  // はじめに動かす：設定・作りかけ・履歴・メニューを読み、画面を作り、LINE とつなぐ（つながらないときも使える）
   async function initApp() {
     cacheElements();
     bindEvents();
@@ -196,6 +201,7 @@ import {
     renderPreview();
   }
 
+  // よく使う画面の部品を elements に覚える
   function cacheElements() {
     elements.statusFallback = document.getElementById("status-fallback");
     elements.tabNav = document.getElementById("tab-nav");
@@ -213,10 +219,12 @@ import {
     elements.lineAppLink = document.getElementById("line-app-link");
   }
 
+  // 押す・入力・スクロール・開け閉めを受けるしかけを付ける
   function bindEvents() {
     document.addEventListener("click", handleClick);
     // 下の送信バーの高さを測り、本文の下の余白にする（案内が出る・消えるたびに高さが変わる）
     if (elements.actionBar) {
+      // 下の送る帯の高さを測り、本文の下の余白（--action-bar-height）にする
       const syncActionBarHeight = function () {
         document.documentElement.style.setProperty("--action-bar-height", elements.actionBar.offsetHeight + "px");
       };
@@ -250,6 +258,7 @@ import {
     }
   }
 
+  // LINE とつないで（LIFF）、その結果を appState.liff に入れて返す
   async function initLiff() {
     const nextState = await initializeLiffState({
       cachedProfile: appState.liff.profile
@@ -267,6 +276,7 @@ import {
     }
   }
 
+  // 送信プレビューを開いているかを端末に覚える（覚えられなくても切りかわる）
   function savePreviewOpen(isOpen) {
     try {
       window.localStorage.setItem(STORAGE_KEYS.previewOpen, String(isOpen));
@@ -275,6 +285,7 @@ import {
     }
   }
 
+  // 表示設定の色を変えて、画面と端末に入れる（色でなければ何もしない）
   function updateTheme(baseColor) {
     const normalizedColor = normalizeHexColor(baseColor);
     if (!normalizedColor) {
@@ -285,18 +296,21 @@ import {
     saveThemePreference(appState.theme);
   }
 
+  // 表示設定の色を初めの色にもどす
   function resetTheme() {
     appState.theme = Object.assign({}, DEFAULT_THEME);
     applyTheme(appState.theme.baseColor);
     saveThemePreference(appState.theme);
   }
 
+  // いまの色から、送るカードの色を返す
   function getFlexTheme() {
     const baseColor =
       appState.theme && appState.theme.baseColor ? appState.theme.baseColor : DEFAULT_THEME.baseColor;
     return buildFlexTheme(baseColor);
   }
 
+  // 入力中の記録から、id の種目を探して返す
   function findExercise(exerciseId) {
     return appState.workout.exercises.find(function (item) {
       return item.exerciseId === exerciseId;
@@ -310,6 +324,7 @@ import {
     renderShell();
   }
 
+  // 種目を最後に足して開く（catalogId を渡すと、その種目を選んだ形で）
   function addExercise(catalogId) {
     const exercise = createEmptyExercise();
     if (catalogId) {
@@ -323,6 +338,7 @@ import {
     scrollToExerciseCard(exercise.exerciseId);
   }
 
+  // 種目を、afterExerciseId の種目のすぐ下に足して開く
   function insertExerciseAfter(afterExerciseId, catalogId) {
     const exercise = createEmptyExercise();
     if (catalogId) {
@@ -371,6 +387,7 @@ import {
     notify("🗑 " + (exercise && exercise.name ? "「" + exercise.name + "」" : "種目") + "を消しました。", "info", undo);
   }
 
+  // 種目にセットを1つ足す（前のセットの重さ・回数を引きつぐ）
   function addSet(exerciseId) {
     const exercise = findExercise(exerciseId);
     if (!exercise) {
@@ -390,6 +407,7 @@ import {
     renderPreview();
   }
 
+  // 種目のセットを1つ消す（「元に戻す」で戻せる）
   function removeSet(exerciseId, setId) {
     const exercise = findExercise(exerciseId);
     if (!exercise) {
@@ -411,6 +429,7 @@ import {
     notify("🗑 セットを消しました。", "info", undo);
   }
 
+  // 種目の一覧から選んだ種目の名前・部位を、入力中の種目に入れる
   function applyCatalogToExercise(exercise, catalogId) {
     const catalogExercise = findCatalogExercise(catalogId);
     if (!catalogExercise) {
@@ -423,6 +442,7 @@ import {
     exercise.selectionMuscle = catalogExercise.muscle;
   }
 
+  // 種目えらびの部位の絞りこみを変える
   function updateExerciseSelectionMuscle(exerciseId, muscle) {
     const exercise = findExercise(exerciseId);
     if (!exercise) {
@@ -433,6 +453,7 @@ import {
     renderInput();
   }
 
+  // 種目の一覧から種目を選ぶ
   function chooseExerciseCatalog(exerciseId, catalogId) {
     const exercise = findExercise(exerciseId);
     if (!exercise) {
@@ -445,6 +466,7 @@ import {
     renderPreview();
   }
 
+  // 一覧にない種目を、自由に名前を入れる形にする
   function startCustomExercise(exerciseId) {
     const exercise = findExercise(exerciseId);
     if (!exercise) {
@@ -460,22 +482,26 @@ import {
     renderPreview();
   }
 
+  // 種目のカードを開く・たたむ（開くのは1つだけ）
   function toggleExercisePanel(exerciseId) {
     appState.ui.expandedExerciseId =
       appState.ui.expandedExerciseId === exerciseId ? "" : exerciseId;
     renderInput();
   }
 
+  // 種目のメモの欄を開く・たたむ
   function toggleExerciseMemo(exerciseId) {
     appState.ui.memoOpenExerciseIds[exerciseId] = !isExerciseMemoOpen(exerciseId);
     appState.ui.expandedExerciseId = exerciseId;
     renderInput();
   }
 
+  // 入力中の記録から送るカードを作る（いまの色・履歴の前回つき）
   function buildWorkoutFlexMessage(workout) {
     return buildWorkoutFlexPayload(workout, getFlexTheme(), resolveGroupKey, appState.history);
   }
 
+  // 送れる形か確かめる。{ valid, errors, workout: 送る形にした記録 } を返す
   function validateWorkout(workout) {
     const errors = [];
     const calculatedWorkout = calculateWorkout(workout);
@@ -504,11 +530,13 @@ import {
     };
   }
 
+  // 記録を履歴に残す（いまは端末に）
   async function saveWorkout(workout) {
     const repository = getWorkoutRepository();
     return repository.save(workout);
   }
 
+  // 記録を残す入れ物（端末かサーバー）を返す
   function getWorkoutRepository() {
     if (FEATURE_FLAGS.enableApiAdapter) {
       return ApiWorkoutRepository;
@@ -516,6 +544,7 @@ import {
     return LocalStorageWorkoutRepository;
   }
 
+  // 端末の履歴を全部読んで返す
   function loadWorkoutHistory() {
     return LocalStorageWorkoutRepository.loadAll();
   }
@@ -550,6 +579,7 @@ import {
     notify(message, "info", undo);
   }
 
+  // 履歴の記録を入力に入れる（入力中の種目があれば「元に戻す」で戻せる）
   function restoreWorkout(workoutId) {
     const restored = LocalStorageWorkoutRepository.findById(workoutId);
     if (!restored) {
@@ -559,6 +589,7 @@ import {
     replaceWorkout(hydrateWorkout(restored), "履歴を入力フォームへ戻しました。");
   }
 
+  // 「カードで送る」を押したとき。送り先を選んでいるあいだにもう一度押されても、送る画面は1つだけ
   async function shareWorkout(workout) {
     if (sharing) {
       return;
@@ -571,6 +602,7 @@ import {
     }
   }
 
+  // 送る：形を確かめ、カードを作って送り先を選ぶ。送れたら履歴に残し、続けて送る・閉じるのシート
   async function shareWorkoutOnce(workout) {
     const validation = validateWorkout(workout);
     if (!validation.valid) {
@@ -621,6 +653,7 @@ import {
         // 送ったあと：続けて別のトークにも・閉じる・もう少し作る（Q キット）
         if (window.LineShareUI && typeof window.LineShareUI.afterSent === "function") {
           window.LineShareUI.afterSent({
+            // 「続けて別のトークにも送る」：同じカードを、もう一度送り先を選んで送る。送れたら true
             resend: async function () {
               return Boolean(await window.liff.shareTargetPicker([message]));
             }
@@ -646,6 +679,7 @@ import {
     }
   }
 
+  // 送る記録の写し（新しい ID・タイトル・時刻）を作って返す
   function createShareSnapshot(workout) {
     const now = new Date().toISOString();
     return hydrateWorkout(
@@ -658,6 +692,7 @@ import {
     );
   }
 
+  // 入力の画面（始め方・種目のカード・下の操作）を描きなおす
   function renderInput() {
     const workout = appState.workout;
     if (appState.ui.expandedExerciseId === null) {
@@ -694,6 +729,7 @@ import {
     updateActionBar();
   }
 
+  // 送信プレビュー（送るカードの見本・この記録の集計）を描きなおす。作りかけも端末に残す
   function renderPreview() {
     keepLocalDraft(); // 入力が変わるたびに呼ばれるので、ここで作りかけを端末に残す
     const calculatedWorkout = calculateWorkout(appState.workout);
@@ -743,6 +779,7 @@ import {
     updateActionBar();
   }
 
+  // 履歴の画面（月ごとのまとまり・ダウンロード・10 件までの説明）を描きなおす
   function renderHistory() {
     if (!FEATURE_FLAGS.enableLocalHistory) {
       elements.tabHistory.innerHTML = renderEmpty("⚙️", "localStorage 履歴は無効化されています。js/line-config.js の feature flag で切り替えできます。");
@@ -803,11 +840,13 @@ import {
     elements.tabHistory.innerHTML = html;
   }
 
+  // 記録の月（"2026-10"、日付がなければ "none"）を返す
   function historyMonthKey(workout) {
     const date = String((workout && workout.date) || "");
     return /^\d{4}-\d{2}/.test(date) ? date.slice(0, 7) : "none";
   }
 
+  // 月の見出し（「2026年10月」「日付なし」）を返す
   function historyMonthLabel(key) {
     return key === "none" ? "日付なし" : Number(key.slice(0, 4)) + "年" + Number(key.slice(5, 7)) + "月";
   }
@@ -816,6 +855,7 @@ import {
   // 1行が1セット。重さ 0 は「自重」、回数 0 は「挑戦」と備考に入れる。
   // LINE の中のブラウザはファイルを保存できないことが多いので、そこでは共有メニュー（ファイル）→ だめならコピー
   function buildHistoryCsv(workouts) {
+    // CSV の1つのます目の文字を返す（, " 改行があれば " でかこむ）
     const cell = function (value) {
       const text = value === null || value === undefined ? "" : String(value);
       return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
@@ -851,6 +891,7 @@ import {
     }).join("\r\n");
   }
 
+  // 履歴（month を渡すとその月だけ）を CSV でダウンロードする。LINE 版では共有メニューかコピー
   async function downloadHistory(month) {
     const list = month
       ? appState.history.filter(function (workout) {
@@ -893,12 +934,14 @@ import {
     document.body.appendChild(link);
     link.click();
     link.remove();
+    // 少しあとで、ダウンロードに使った中身を手放す
     setTimeout(function () {
       URL.revokeObjectURL(url);
     }, 1000);
     notify(name + " をダウンロードしました。", "info");
   }
 
+  // ランキング（デバッグ用）の画面を描きなおす
   function renderRanking() {
     if (!isRankingEnabled() || !elements.tabRanking) {
       return;
@@ -942,6 +985,7 @@ import {
     elements.tabRanking.innerHTML = html;
   }
 
+  // ランキングを返す（いまはモック）
   async function getRanking() {
     if (FEATURE_FLAGS.enableApiAdapter) {
       return ApiWorkoutRepository.getRanking({
@@ -968,6 +1012,7 @@ import {
     };
   }
 
+  // 画面のボタンを押したとき：data-action の名前から、CLICK_ACTIONS の処理を呼ぶ
   function handleClick(event) {
     const button = event.target.closest("button");
     if (!button) {
@@ -1107,6 +1152,7 @@ import {
     }
   };
 
+  // 入力欄が変わったとき：タイトル・種目・重さ・回数・メモなどを入力中の記録に入れる
   function handleInput(event) {
     const target = event.target;
     if (!(target instanceof HTMLElement)) {
@@ -1177,6 +1223,7 @@ import {
     }
   }
 
+  // 画面の外わく（タブ・見出し・送る帯・シート）を描きなおす
   function renderShell() {
     if (!isRankingEnabled() && appState.activeTab === "ranking") {
       appState.activeTab = "input";
@@ -1205,6 +1252,7 @@ import {
     updateActionBar();
   }
 
+  // タブの名前と、その下の小さな字（件数など）を描きなおす
   function renderTabButtonLabels() {
     if (!elements.tabButtons || !elements.tabButtons.length) {
       return;
@@ -1222,6 +1270,7 @@ import {
     });
   }
 
+  // タブの名前（大きな字と下の小さな字）の HTML を返す
   function renderTabButtonLabel(main, sub) {
     return '<span class="tab-main">' + escapeHtml(main) + '</span><span class="tab-sub">' + escapeHtml(sub || "") + "</span>";
   }
@@ -1234,10 +1283,12 @@ import {
     ranking: renderRanking
   };
 
+  // 開いているタブの画面を描きなおす
   function renderActiveTab() {
     (TAB_RENDERERS[appState.activeTab] || renderInput)();
   }
 
+  // タブの名前から、その画面の部品を返す
   function getPanelElement(tab) {
     const panels = {
       input: elements.tabInput,
@@ -1252,6 +1303,7 @@ import {
   // undo を渡すと「元に戻す」ボタンが付く。ui.js が読めないときは、ページの下の文字で知らせる
   const NOTICE_MS = { info: 3000, warn: 8000, error: 8000 };
 
+  // トーストで知らせる（undo を渡すと「元に戻す」つき）。Q キットがないときは画面の上の欄に
   function notify(message, type, undo) {
     const ms = undo ? 6000 : NOTICE_MS[type] || NOTICE_MS.info;
     if (window.LineShareUI && typeof window.LineShareUI.toast === "function") {
@@ -1267,6 +1319,7 @@ import {
     }, ms);
   }
 
+  // タブを切りかえて、その画面まで動かす
   function setActiveTab(tab) {
     if (tab === "ranking" && !isRankingEnabled()) {
       appState.activeTab = "input";
@@ -1285,6 +1338,7 @@ import {
     scrollToPanel(tab);
   }
 
+  // タブの画面を出す（ランキングはデバッグのときだけ）
   function setPanelVisibility(tabName, element) {
     if (!element) {
       return;
@@ -1293,6 +1347,7 @@ import {
     element.hidden = !shouldShow;
   }
 
+  // 下の送る帯（送るボタン・デバッグのコピー・ブラウザ版の案内）を描きなおす
   function updateActionBar() {
     if (!elements.actionBar || !elements.shareButton || !elements.copyJsonButton) {
       return;
@@ -1309,6 +1364,7 @@ import {
   // ---- ブラウザ版：送れる環境（ログイン・LINE 版）へ移る導線 ----
   const DRAFT_KEY = "kiloq:carry-draft";
 
+  // 入力中の記録を、URL に入れる文字（base64url）にして返す。種目がなければ ""
   function encodedDraft() {
     const draft = packWorkoutDraft(appState.workout);
     return draft ? encodeBase64Url(JSON.stringify(draft)) : "";
@@ -1334,6 +1390,7 @@ import {
     elements.lineAppLink.href = appUrl || "#";
   }
 
+  // 🔑 ログインして送る：入力をこのブラウザに残してから、LINE のログインへ
   function startLineLogin() {
     // ログインの行き来で入力が消えないよう、このブラウザに一時的に残す
     try {
@@ -1400,6 +1457,7 @@ import {
   // 送り終えた記録は残さない（sentDraft と同じ中身のあいだは消しておく）
   let sentDraft = "";
 
+  // 作りかけの記録を端末に残す（送り終えた記録・空のときは消す）
   function keepLocalDraft() {
     const draft = packWorkoutDraft(appState.workout);
     const text = draft ? JSON.stringify(draft) : "";
@@ -1433,12 +1491,14 @@ import {
     window.LineShareUI.toast("前回の続きから開きました", {
       actionLabel: "新しく作る",
       ms: 8000,
+      // 「新しく作る」：空の記録にする（「元に戻す」で戻せる）
       onAction: function () {
         replaceWorkout(createEmptyWorkout(), "新しく作りはじめました。");
       }
     });
   }
 
+  // タブの画面のいちばん上まで動かす
   function scrollToPanel(tab) {
     const panel = getPanelElement(tab);
     if (!panel || panel.hidden || typeof panel.scrollIntoView !== "function") {
@@ -1453,6 +1513,7 @@ import {
     });
   }
 
+  // 種目のカードまで動かす（見つからなければ入力の画面の上へ）
   function scrollToExerciseCard(exerciseId) {
     if (!exerciseId) {
       scrollToPanel("input");
@@ -1475,6 +1536,7 @@ import {
     });
   }
 
+  // スクロールした位置に合わせて、タブの選んでいる印を動かす
   function syncActiveTabToScroll() {
     if (Date.now() < Number(appState.ui.suppressScrollSpyUntil || 0)) {
       return;
@@ -1514,6 +1576,7 @@ import {
     }
   }
 
+  // 記録の名前（LINE の名前と写真）を入れる。タイトルが空なら初めのタイトルに
   function syncWorkoutUser() {
     appState.workout.user = Object.assign({}, DEFAULT_USER, appState.liff.profile || {});
     if (!String(appState.workout.title || "").trim()) {
@@ -1523,11 +1586,13 @@ import {
     touchWorkout(false);
   }
 
+  // グループ・トークの ID（ランキング用）を返す。わからなければ初めの値
   function resolveGroupKey() {
     const context = appState.liff.context || safelyGetLiffContext() || {};
     return context.groupId || context.roomId || APP_CONFIG.DEFAULT_GROUP_KEY || null;
   }
 
+  // 入力が変わったとき：日付を今日にし、更新の時刻を入れる（renewWorkoutId なら ID も新しく）
   function touchWorkout(renewWorkoutId) {
     // 日付は手入力させず、記録を入力した日をそのまま使う
     appState.workout.date = getTodayLocalDate();
@@ -1539,10 +1604,12 @@ import {
     appState.ui.openJsonPreview = false;
   }
 
+  // 送る記録にする（名前のない種目・入っていないセットを外す）
   function sanitizeWorkout(workout) {
     return sanitizeWorkoutModel(workout, resolveGroupKey);
   }
 
+  // 種目のカード1つ（番号・名前・まとめ・開いたときの入力欄）の HTML を返す
   function renderExerciseCard(exercise, exerciseIndex) {
     const showExerciseFields = Boolean(exercise.catalogId || exercise.isCustom);
     const exerciseTitle = exercise.name
@@ -1596,6 +1663,7 @@ import {
     ].join("");
   }
 
+  // 種目のカードのならび（あいだの「＋ 種目を足す」もふくむ）の HTML を返す
   function renderExerciseStack(exercises) {
     return (
       exercises
@@ -1618,6 +1686,7 @@ import {
     });
   }
 
+  // 開いた種目のカードの中身（部位と種目えらび・セットの行・メモ）の HTML を返す
   function renderSelectedExerciseFields(exercise, isExpanded) {
     if (!isExpanded) {
       return "";
@@ -1756,6 +1825,7 @@ import {
     ].join("");
   }
 
+  // セットの − ／ ＋ を押したとき、重さ・回数を1目もり動かす
   function stepSetValue(button) {
     const row = button.closest(".set-row");
     const field = button.getAttribute("data-set-field");
@@ -1770,6 +1840,7 @@ import {
     input.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
+  // 種目のまとめ（セットの数・推定1RM）だけを描きなおす（入力中は全体を描きなおさない）
   function syncRenderedSetSummary(exerciseId) {
     const exercise = findExercise(exerciseId);
     if (!exercise) {
@@ -1788,6 +1859,7 @@ import {
     });
   }
 
+  // この記録の集計（種目ごとのセット・ボリューム・推定1RM）の HTML を返す
   function renderExerciseMetrics(workout) {
     const previewExercises = getNamedExercises(workout);
 
@@ -1818,6 +1890,7 @@ import {
     return '<div class="input-start-row" role="group" aria-label="入力の始め方">' + buttons.join("") + "</div>";
   }
 
+  // 入力の画面のいちばん下の小さな操作（サンプル・リセット）の HTML を返す
   function renderInputUtilityActions() {
     return [
       // 補助的な操作は一番下に小さく（「履歴から始める」は見出しの横へ移した）
@@ -1828,6 +1901,7 @@ import {
     ].join("");
   }
 
+  // 見出しの右の表示設定のボタン（LINE の写真か頭文字）の HTML を返す
   function renderSettingsTrigger() {
     const profile = appState.liff.profile || DEFAULT_USER;
     const avatar = profile.pictureUrl
@@ -1840,6 +1914,7 @@ import {
     ].join("");
   }
 
+  // 表示設定のシート（色・草グラフ）の HTML を返す。閉じているときは ""
   function renderSettingsSheet() {
     if (!appState.ui.settingsModalOpen) {
       return "";
@@ -1877,6 +1952,7 @@ import {
   // この端末の履歴（送った記録）から、日ごとのセット数で4段階に塗る。いちばん右の列が今週（月曜はじまり）
   const GRASS_WEEKS = 18;
 
+  // 草グラフ（日ごとのセット数を、月曜はじまりの週で並べる）の HTML を返す
   function renderGrass() {
     const setsByDay = {};
     appState.history.forEach(function (workout) {
@@ -1886,6 +1962,7 @@ import {
       }, 0);
       setsByDay[workout.date] = (setsByDay[workout.date] || 0) + sets;
     });
+    // 日付を "2026-10-25" の形にして返す（この端末の時間で）
     const toKey = function (d) {
       return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
     };
@@ -1893,6 +1970,7 @@ import {
     today.setHours(0, 0, 0, 0);
     const start = new Date(today);
     start.setDate(start.getDate() - ((today.getDay() + 6) % 7) - (GRASS_WEEKS - 1) * 7); // GRASS_WEEKS 週前の月曜
+    // セット数から草の濃さ（0〜4）を返す
     const level = function (sets) {
       return sets <= 0 ? 0 : sets < 6 ? 1 : sets < 12 ? 2 : sets < 20 ? 3 : 4;
     };
@@ -1945,6 +2023,7 @@ import {
 
   // ---- トレーニングメニュー（テンプレート） ----
 
+  // トレーニングメニューのシートを開く（名前の欄には、入力中のタイトルを入れておく）
   function openMenuModal() {
     appState.menus = MenuRepository.loadAll();
     // 名前の初期値はワークアウトのタイトル（自動で入る「キロっく」などはメニュー名にしない）
@@ -1954,6 +2033,7 @@ import {
     renderInput();
   }
 
+  // id のトレーニングメニュー（保存したもの・おすすめ）を探して返す
   function findMenu(menuId) {
     const saved = appState.menus.find(function (menu) {
       return menu.menuId === menuId;
@@ -1967,6 +2047,7 @@ import {
     return preset ? expandMenuPreset(preset) : null;
   }
 
+  // 入力中の記録を、名前をつけてトレーニングメニューに保存する（同じ名前は上書き。「元に戻す」で戻せる）
   function saveCurrentAsMenu() {
     const name = (appState.ui.menuName || "").trim();
     if (!name) {
@@ -1989,6 +2070,7 @@ import {
     notify(seasonal("「" + name + "」をメニューに" + (existing ? "上書き" : "保存") + "しました。"), "info", undo);
   }
 
+  // トレーニングメニューを入力に入れる（「元に戻す」で戻せる）
   function applyMenu(menuId) {
     const menu = findMenu(menuId);
     if (!menu) {
@@ -2002,6 +2084,7 @@ import {
     );
   }
 
+  // トレーニングメニューを消す（「元に戻す」で戻せる）
   function deleteMenu(menuId) {
     const menu = findMenu(menuId);
     if (!menu) {
@@ -2044,6 +2127,7 @@ import {
     ].join("");
   }
 
+  // トレーニングメニューのシート（保存・保存したもの・おすすめ）の HTML を返す。閉じているときは ""
   function renderMenuSheet() {
     if (!appState.ui.menuModalOpen) {
       return "";
@@ -2092,6 +2176,7 @@ import {
     });
   }
 
+  // 名前の頭文字（写真がないときに出す。名前がなければ「W」）を返す
   function getUserInitial(displayName) {
     const normalized = String(displayName || "").trim();
     if (!normalized) {
@@ -2100,6 +2185,7 @@ import {
     return normalized.slice(0, 1).toUpperCase();
   }
 
+  // 入力中の帯（いま開いている種目の名前とまとめ）の HTML を返す
   function renderCurrentExerciseIndicator(exercises) {
     const currentExercise = findExpandedExercise(exercises);
     if (!currentExercise || !(currentExercise.catalogId || currentExercise.isCustom)) {
@@ -2128,12 +2214,14 @@ import {
     ].join("");
   }
 
+  // いま開いている種目を返す
   function findExpandedExercise(exercises) {
     return (exercises || []).find(function (exercise) {
       return exercise.exerciseId === appState.ui.expandedExerciseId;
     });
   }
 
+  // 履歴の記録1つ（開くと種目ごとの集計・この内容で入力・消す）の HTML を返す
   function renderHistoryCard(workout) {
     const isOpen = Boolean(appState.ui.openHistoryIds[workout.workoutId]);
     const idAttrs = { "data-workout-id": workout.workoutId };
@@ -2163,11 +2251,13 @@ import {
     ].join("");
   }
 
+  // 記録の種目ごとの集計の HTML を返す
   function renderWorkoutExerciseStats(workout) {
     const exercises = getNamedExercises(workout);
     return exercises.length ? '<div class="stats-grid">' + exercises.map(renderExerciseStatCard).join("") + "</div>" : "";
   }
 
+  // 履歴の記録を開く・たたむ
   function toggleHistoryCard(workoutId) {
     appState.ui.openHistoryIds[workoutId] = !appState.ui.openHistoryIds[workoutId];
     renderHistory();
@@ -2192,6 +2282,7 @@ import {
     ].join("");
   }
 
+  // 送るカード1枚の見本（見出し・種目・下の帯）の HTML を、カードの中身から作って返す
   function renderBubblePreview(workout, bubble) {
     const exerciseBoxes = bubble.body && bubble.body.contents ? bubble.body.contents : [];
     const headerContents = bubble.header && bubble.header.contents ? bubble.header.contents : [];
@@ -2270,6 +2361,7 @@ import {
     ].join("");
   }
 
+  // ランキングのカード（デバッグ用）の HTML を返す
   function renderRankingCard(title, rows, unit) {
     return [
       '<article class="ranking-card">',
@@ -2300,6 +2392,7 @@ import {
     ].join("");
   }
 
+  // 種目1つの集計のカード（セット・ボリューム・推定1RM）の HTML を返す
   function renderExerciseStatCard(exercise) {
     const validSetCount = countValidSets(exercise);
     const caption = [String(validSetCount) + "セット"];
@@ -2382,6 +2475,7 @@ import {
     ].join("");
   }
 
+  // その種目のカードが開いているかを返す
   function isExerciseExpanded(exerciseId) {
     if (!exerciseId) {
       return false;
@@ -2389,6 +2483,7 @@ import {
     return appState.ui.expandedExerciseId === exerciseId;
   }
 
+  // はじめに開いておく種目（種目を選んだ最初のもの）の id を返す
   function getDefaultExpandedExerciseId(exercises) {
     const matchedExercise = (exercises || []).find(function (exercise) {
       return Boolean(exercise && (exercise.catalogId || exercise.isCustom));
@@ -2396,10 +2491,12 @@ import {
     return matchedExercise ? matchedExercise.exerciseId : "";
   }
 
+  // その種目のメモの欄が開いているかを返す
   function isExerciseMemoOpen(exerciseId) {
     return Boolean(appState.ui.memoOpenExerciseIds[exerciseId]);
   }
 
+  // 種目のまとめの文字（「3セット・RM 75kg」など）を返す
   function renderExerciseSummary(exercise) {
     const validSetCount = countValidSets(exercise);
     const summaryParts = [];
@@ -2414,6 +2511,7 @@ import {
     return summaryParts.join(" / ");
   }
 
+  // メモのボタンの文字（「＋メモ追加」「メモ編集」「メモをたたむ」）を返す
   function getExerciseMemoButtonLabel(exercise) {
     const isOpen = isExerciseMemoOpen(exercise.exerciseId);
     const hasMemo = Boolean(String(exercise.memo || "").trim());
@@ -2425,6 +2523,7 @@ import {
     return hasMemo ? "メモ編集" : "＋メモ追加";
   }
 
+  // メモの入力欄の HTML を返す。閉じているときは ""
   function renderExerciseMemoField(exercise) {
     const isOpen = isExerciseMemoOpen(exercise.exerciseId);
     if (!isOpen) {
@@ -2444,6 +2543,7 @@ import {
     });
   }
 
+  // 見本の記録を入力に入れる（「元に戻す」で戻せる）
   function applySampleWorkout() {
     replaceWorkout(
       hydrateWorkout(
@@ -2456,6 +2556,7 @@ import {
     );
   }
 
+  // 入力をまっさらにする（「元に戻す」で戻せる）
   function resetWorkout() {
     replaceWorkout(createEmptyWorkout(), "入力内容をリセットしました。");
   }
@@ -2466,6 +2567,7 @@ import {
     appState.history = LocalStorageWorkoutRepository.deleteById(workoutId);
     renderHistory();
     renderShell();
+    // 知らせて、「元に戻す」を押されたら消した履歴をもどす
     notify("🗑 履歴を消しました。", "info", function () {
       appState.history = LocalStorageWorkoutRepository.replaceAll(saved);
       renderHistory();
@@ -2474,6 +2576,7 @@ import {
     });
   }
 
+  // ランキング（デバッグ用）の期間を変える
   function changeRankingPeriod(period) {
     if (!isRankingEnabled()) {
       return;
@@ -2482,6 +2585,7 @@ import {
     renderRanking();
   }
 
+  // いまの送るカードの JSON をコピーする（デバッグ用）
   async function copyCurrentFlexJson() {
     if (!isDebugModeEnabled()) {
       notify("Flex JSONコピーはデバッグモードでのみ利用できます。", "warn");
@@ -2507,6 +2611,7 @@ import {
     }
   }
 
+  // 文字をコピーする。できたら true
   async function copyText(text) {
     try {
       if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {

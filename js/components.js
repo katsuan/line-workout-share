@@ -1,8 +1,10 @@
 // 画面の部品（HTML 文字列を返すだけ。状態は持たない）。見た目はおくるんの Q キット（ls-*）にそろえる
+// app.js から読む（import）
 import {
   escapeHtml
-} from "./format.js?v=202610250234";
+} from "./format.js?v=202610250455";
 
+// { 名前: 値 } を HTML の属性の文字（ name="値"）にして返す。値は書きかえて入れる
 function renderAttributes(attrs) {
   return Object.keys(attrs || {})
     .map(function (key) {

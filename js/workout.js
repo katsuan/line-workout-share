@@ -1,20 +1,21 @@
 // キロっく：記録の形（種目・セット・推定1RM・ボリューム）と、トレーニングメニュー
+// app.js・card.js・link.js から読む（import）
 import {
   EXERCISE_CATALOG
-} from "./catalog.js?v=202610250234";
+} from "./catalog.js?v=202610250455";
 import {
   roundNumber,
   toNullableNumber
-} from "./format.js?v=202610250234";
+} from "./format.js?v=202610250455";
 import {
   deepClone,
   generateId,
   getTodayLocalDate
-} from "./page.js?v=202610250234";
+} from "./page.js?v=202610250455";
 import {
   APP_CONFIG,
   DEFAULT_USER
-} from "./settings.js?v=202610250234";
+} from "./settings.js?v=202610250455";
 
 // 文字の長さの上限（入力欄の maxlength・送るカード・リンクの draft で同じ）
 export const TEXT_LIMITS = { title: 40, name: 60, memo: 200, catalogId: 40, muscle: 20, displayName: 20, altText: 400 };
@@ -22,6 +23,7 @@ export const TEXT_LIMITS = { title: 40, name: 60, memo: 200, catalogId: 40, musc
 // 重さ・回数の上限（リンクの draft から読むとき）
 export const NUMBER_MAX = 9999;
 
+// 空の記録（今日の日付・種目1つ）を作って返す
 export function createEmptyWorkout() {
   const timestamp = new Date().toISOString();
   return calculateWorkout({
@@ -37,6 +39,7 @@ export function createEmptyWorkout() {
   });
 }
 
+// 空の種目（セット1つ）を作って返す
 export function createEmptyExercise() {
   return {
     exerciseId: generateId("exercise"),
@@ -52,6 +55,7 @@ export function createEmptyExercise() {
   };
 }
 
+// 空のセットを作って返す
 export function createEmptySet() {
   return {
     setId: generateId("set"),
@@ -62,6 +66,7 @@ export function createEmptySet() {
   };
 }
 
+// 記録の推定1RM・ボリューム・セットの数などを計算しなおした写しを返す
 export function calculateWorkout(workout) {
   const clonedWorkout = deepClone(workout);
   let workoutVolume = 0;
@@ -102,6 +107,7 @@ export function calculateWorkout(workout) {
   return clonedWorkout;
 }
 
+// 重さと回数から推定1RM を返す（重さ×(1＋回数÷40)。O'Conner の式）
 function estimate1rm(weight, reps) {
   return weight + (weight * reps) / 40;
 }
@@ -111,10 +117,12 @@ const isPlainObject = function (value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 };
 
+// 並びの中の、ふつうのオブジェクトだけを返す（並びでなければ []）
 const objectsIn = function (value) {
   return Array.isArray(value) ? value.filter(isPlainObject) : [];
 };
 
+// 端末に残った記録（前の版・壊れたものもある）から、入力の形にした記録を返す
 export function hydrateWorkout(workout) {
   const source = isPlainObject(workout) ? workout : {};
   const baseWorkout = calculateWorkout(
@@ -136,6 +144,7 @@ export function hydrateWorkout(workout) {
   return baseWorkout;
 }
 
+// 送る記録にする：名前のない種目と、重さか回数のないセットを外して返す
 export function sanitizeWorkout(workout, resolveGroupKey) {
   const calculatedWorkout = calculateWorkout(workout);
   const validExercises = calculatedWorkout.exercises
@@ -178,6 +187,7 @@ export function sanitizeWorkout(workout, resolveGroupKey) {
   });
 }
 
+// タイトルが空のときのタイトル（「◯◯のキロっく」か「キロっく」）を返す
 export function getDefaultWorkoutTitle(user) {
   const displayName = user ? String(user.displayName || "").trim() : "";
   if (displayName && displayName.toLowerCase() !== "anonymous") {
@@ -186,6 +196,7 @@ export function getDefaultWorkoutTitle(user) {
   return "キロっく";
 }
 
+// タイトル（空なら初めのタイトル）を返す
 export function resolveWorkoutTitle(title, user) {
   const normalizedTitle = String(title || "").trim();
   return normalizedTitle || getDefaultWorkoutTitle(user);
@@ -198,6 +209,7 @@ export function getNamedExercises(workout) {
   });
 }
 
+// 名前の入った種目の数を返す
 export function countNamedExercises(workout) {
   return getNamedExercises(workout).length;
 }
@@ -212,6 +224,7 @@ export function hasEstimated1rm(set) {
   return Number((set && set.estimated1rm) || 0) > 0;
 }
 
+// 種目の、重さと回数の入ったセットの数を返す
 export function countValidSets(exercise) {
   return (exercise.sets || []).filter(isFilledSet).length;
 }
@@ -305,6 +318,7 @@ export function summarizeMenu(menu) {
   return exercises.length + "種目・" + sets + "セット";
 }
 
+// 推定1RM を計算できるセット（重さも回数も 1 以上）かを返す
 export function isValidSetInput(weight, reps) {
   return weight !== null && reps !== null && weight > 0 && reps > 0;
 }

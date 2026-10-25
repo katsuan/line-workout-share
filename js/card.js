@@ -1,31 +1,32 @@
 // キロっく：送るカード（LINE の Flex）を作る。種目が多いときは横に並べ、最後のカードに「🏋️ 同じメニューでやる」
+// app.js から読む（import）
 import {
   formatFlexWeight,
   formatMetric,
   roundNumber,
   truncateText
-} from "./format.js?v=202610250234";
+} from "./format.js?v=202610250455";
 import {
   buildLiffLaunchUrl,
   buildSameMenuUrl
-} from "./link.js?v=202610250234";
+} from "./link.js?v=202610250455";
 import {
   getTodayLocalDate
-} from "./page.js?v=202610250234";
+} from "./page.js?v=202610250455";
 import {
   APP_CONFIG,
   FLEX_THEME,
   MAX_EXERCISES_PER_BUBBLE,
   MAX_FLEX_UNITS_PER_BUBBLE,
   MAX_SETS_PER_FLEX_EXERCISE
-} from "./settings.js?v=202610250234";
+} from "./settings.js?v=202610250455";
 import {
   hasEstimated1rm,
   isMaxRmSet,
   resolveWorkoutTitle,
   sanitizeWorkout,
   TEXT_LIMITS
-} from "./workout.js?v=202610250234";
+} from "./workout.js?v=202610250455";
 
 const MAX_FLEX_BUBBLES = 12;
 
@@ -71,6 +72,7 @@ export function getCreditText() {
   return "Created by " + (APP_CONFIG.APP_NAME || "kiloQ") + " ›";
 }
 
+// 1枚のカード（見出し・種目・下の帯）を作る。最後のカードには「🏋️ 同じメニューでやる」を付ける
 function buildWorkoutBubble(workout, exercises, bubbleIndex, bubbleCount, theme) {
   const headerContents = [
     {
@@ -162,6 +164,7 @@ function buildWorkoutBubble(workout, exercises, bubbleIndex, bubbleCount, theme)
   };
 }
 
+// カードの中の種目1つぶんの箱（種目名・RM・セット・前回・メモ）を作る
 function buildExerciseBoxForFlex(exercise, theme) {
   return {
     type: "box",
@@ -213,6 +216,7 @@ function buildExerciseBoxForFlex(exercise, theme) {
   };
 }
 
+// 種目のセットの行（何セット目・重さ×回数・MAX RM の印）を作る。多いときは「ほか N セット」
 function buildSetLinesForFlex(exercise, theme) {
   const visibleSets = exercise.sets.slice(0, MAX_SETS_PER_FLEX_EXERCISE);
   const lines = visibleSets.map(function (set, index) {
@@ -288,6 +292,7 @@ function buildSetLinesForFlex(exercise, theme) {
   return lines;
 }
 
+// 種目を、1枚のカードに入る量ずつのまとまりに分ける
 function splitExercisesForFlexBubbles(exercises) {
   const chunks = [];
   let currentChunk = [];
@@ -319,6 +324,7 @@ function splitExercisesForFlexBubbles(exercises) {
 
 // 同じ種目の前回の記録：履歴（新しい順）から、この記録以外で同じ種目（catalogId、なければ種目名）の推定RM が出ているもの
 function findPreviousRecord(exercise, history, workoutId) {
+  // 同じ種目か（種目の一覧から選んだものは id で、自由入力は名前で比べる）を返す
   const sameExercise = function (other) {
     return exercise.catalogId ? other.catalogId === exercise.catalogId : String(other.name || "").trim() === String(exercise.name || "").trim();
   };
@@ -334,6 +340,7 @@ function findPreviousRecord(exercise, history, workoutId) {
   return null;
 }
 
+// 種目ごとに、履歴の前回の推定1RM を付けて返す（前回がなければそのまま）
 function attachPreviousRecords(workout, history) {
   if (!history || !history.length) return workout;
   return Object.assign({}, workout, {
@@ -360,6 +367,7 @@ function buildPreviousLineForFlex(exercise, theme) {
   };
 }
 
+// 種目1つがカードの中でとる高さの目安（行の数）を返す
 function estimateExerciseFlexUnits(exercise) {
   const visibleSetCount = Math.min((exercise.sets || []).length, MAX_SETS_PER_FLEX_EXERCISE);
   const hiddenSetCount = (exercise.sets || []).length > MAX_SETS_PER_FLEX_EXERCISE ? 1 : 0;
@@ -367,6 +375,7 @@ function estimateExerciseFlexUnits(exercise) {
   return 2 + visibleSetCount + hiddenSetCount + memoUnits + (exercise.previous ? 1 : 0);
 }
 
+// トーク一覧などに出る代わりの文（タイトル・種目の数・セットの数）を返す
 function buildWorkoutAltText(workout) {
   const rawTitle = String((workout && workout.title) || "").trim();
   const title = resolveWorkoutTitle(rawTitle, workout.user);
@@ -388,11 +397,13 @@ function buildWorkoutAltText(workout) {
   return (workout.date || getTodayLocalDate()) + " " + title;
 }
 
+// カードに名前を出すか（LINE の名前があり、名前なしでないか）を返す
 function shouldShowWorkoutUser(workout) {
   const displayName = workout && workout.user ? String(workout.user.displayName || "").trim() : "";
   return Boolean(displayName) && displayName.toLowerCase() !== "anonymous";
 }
 
+// 最後のカードの「🏋️ 同じメニューでやる」のボタンを返す（URL が作れないときは []）
 function buildSameMenuButton(workout) {
   const url = buildSameMenuUrl(workout);
   if (!url) {
@@ -409,6 +420,7 @@ function buildSameMenuButton(workout) {
   ];
 }
 
+// 下の帯の文字を押したとき、キロっくの LINE 版を開くしかけを返す（作れないときは undefined）
 function buildLiffFooterAction() {
   const launchUrl = buildLiffLaunchUrl();
   if (!launchUrl) {

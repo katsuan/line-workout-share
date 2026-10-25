@@ -1,10 +1,11 @@
 // キロっく：端末に残すもの（記録の履歴・トレーニングメニュー）の読み書き。履歴（liff-workout-history）はつづくも読むので形を変えない
+// app.js から読む（import）
 import {
   FEATURE_FLAGS,
   MAX_HISTORY_ITEMS,
   MAX_MENUS,
   STORAGE_KEYS
-} from "./settings.js?v=202610250234";
+} from "./settings.js?v=202610250455";
 
 // 端末に書く。残せない（容量いっぱい・プライベートブラウズ）ときも止めない（送る・画面はそのまま使える）
 function writeList(key, list) {
@@ -16,8 +17,10 @@ function writeList(key, list) {
   return list;
 }
 
+// 記録の履歴を端末（localStorage）に残す入れ物を作って返す（新しいものから MAX_HISTORY_ITEMS 件）
 export function createLocalStorageWorkoutRepository(hydrateWorkout) {
   return {
+    // 記録を履歴のいちばん上に残す（同じ記録なら置きかえる）
     save: async function (workout) {
       if (!FEATURE_FLAGS.enableLocalHistory) {
         return workout;
@@ -31,6 +34,7 @@ export function createLocalStorageWorkoutRepository(hydrateWorkout) {
       writeList(STORAGE_KEYS.history, list.slice(0, MAX_HISTORY_ITEMS));
       return workout;
     },
+    // 履歴を全部読む（壊れた記録は飛ばす）
     loadAll: function () {
       if (!FEATURE_FLAGS.enableLocalHistory) {
         return [];
@@ -56,11 +60,13 @@ export function createLocalStorageWorkoutRepository(hydrateWorkout) {
         return [];
       }
     },
+    // id の記録を履歴から探して返す
     findById: function (workoutId) {
       return this.loadAll().find(function (item) {
         return item.workoutId === workoutId;
       });
     },
+    // id の記録を履歴から消す
     deleteById: function (workoutId) {
       return this.replaceAll(
         this.loadAll().filter(function (item) {
@@ -75,11 +81,14 @@ export function createLocalStorageWorkoutRepository(hydrateWorkout) {
   };
 }
 
+// サーバーに残す入れ物（まだ使っていない。ランキングはモック）を作って返す
 export function createApiWorkoutRepository(resolveGroupKey, mockRanking) {
   return {
+    // 記録を残す（いまは何もしない）
     save: async function (workout) {
       return workout;
     },
+    // ランキングを返す（いまはモック）
     getRanking: async function () {
       return mockRanking({
         groupKey: resolveGroupKey()
@@ -91,6 +100,7 @@ export function createApiWorkoutRepository(resolveGroupKey, mockRanking) {
 // トレーニングメニュー（テンプレート）。この端末の localStorage に、新しく保存したものから並べて残す
 export function createLocalStorageMenuRepository() {
   return {
+    // トレーニングメニューを全部読む（形のちがうものは飛ばす）
     loadAll: function () {
       try {
         const parsed = JSON.parse(localStorage.getItem(STORAGE_KEYS.menus) || "[]");
@@ -104,6 +114,7 @@ export function createLocalStorageMenuRepository() {
         return [];
       }
     },
+    // 名前でトレーニングメニューを探して返す
     findByName: function (name) {
       return this.loadAll().find(function (menu) {
         return menu.name === name;
@@ -117,6 +128,7 @@ export function createLocalStorageMenuRepository() {
       list.unshift(menu);
       return this.replaceAll(list.slice(0, MAX_MENUS));
     },
+    // id のトレーニングメニューを消す
     deleteById: function (menuId) {
       return this.replaceAll(
         this.loadAll().filter(function (item) {

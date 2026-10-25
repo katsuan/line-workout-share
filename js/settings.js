@@ -1,4 +1,5 @@
 // キロっく：設定（LIFF の設定・機能の ON/OFF・端末に残すキー・数の上限・色）
+// app.js・card.js・liff.js・link.js・store.js・theme.js・workout.js から読む（import）
 
 export const APP_CONFIG = window.APP_CONFIG || {};
 

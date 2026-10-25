@@ -1,9 +1,11 @@
 // 見本のデータ（「サンプルを入れる」と、ランキングのモック）
+// app.js から読む（import）
 import {
   generateId,
   getTodayLocalDate
-} from "./page.js?v=202610250234";
+} from "./page.js?v=202610250455";
 
+// 「サンプルを入れる」の見本の記録を返す
 export function buildSampleWorkout(options) {
   const timestamp = new Date().toISOString();
   return {
@@ -42,6 +44,7 @@ export function buildSampleWorkout(options) {
   };
 }
 
+// ランキングのモック（デバッグ用の見本）を返す
 export function mockRanking() {
   return {
     week: {

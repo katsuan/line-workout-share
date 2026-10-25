@@ -1,4 +1,5 @@
 // キロっく：種目の一覧・部位の絞りこみ・おすすめメニュー
+// app.js・workout.js から読む（import）
 
 export const EXERCISE_CATALOG = [
   { id: "bench-press", name: "ベンチプレス", muscle: "胸" },
