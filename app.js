@@ -3,12 +3,12 @@
 import {
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
   getCreditText
-} from "./js/card.js?v=202610250455";
+} from "./js/card.js?v=202610251900";
 import {
   EXERCISE_CATALOG,
   MENU_PRESETS,
   MUSCLE_FILTERS
-} from "./js/catalog.js?v=202610250455";
+} from "./js/catalog.js?v=202610251900";
 import {
   renderButton,
   renderChip,
@@ -17,16 +17,16 @@ import {
   renderField,
   renderSheet,
   renderStartButton
-} from "./js/components.js?v=202610250455";
+} from "./js/components.js?v=202610251900";
 import {
   buildSampleWorkout,
   mockRanking
-} from "./js/fixtures.js?v=202610250455";
+} from "./js/fixtures.js?v=202610251900";
 import {
   cssEscape,
   escapeHtml,
   formatLocaleMetric
-} from "./js/format.js?v=202610250455";
+} from "./js/format.js?v=202610251900";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -34,19 +34,19 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./js/liff.js?v=202610250455";
+} from "./js/liff.js?v=202610251900";
 import {
   encodeBase64Url,
   packWorkoutDraft,
   readPackedWorkout,
   unpackWorkoutDraft
-} from "./js/link.js?v=202610250455";
+} from "./js/link.js?v=202610251900";
 import {
   deepClone,
   generateId,
   getTodayLocalDate,
   seasonal
-} from "./js/page.js?v=202610250455";
+} from "./js/page.js?v=202610251900";
 import {
   APP_CONFIG,
   DEFAULT_THEME,
@@ -55,19 +55,19 @@ import {
   MAX_HISTORY_ITEMS,
   MAX_MENUS,
   STORAGE_KEYS
-} from "./js/settings.js?v=202610250455";
+} from "./js/settings.js?v=202610251900";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./js/store.js?v=202610250455";
+} from "./js/store.js?v=202610251900";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./js/theme.js?v=202610250455";
+} from "./js/theme.js?v=202610251900";
 import {
   buildMenuFromWorkout,
   calculateWorkout,
@@ -88,7 +88,7 @@ import {
   sanitizeWorkout as sanitizeWorkoutModel,
   summarizeMenu,
   TEXT_LIMITS
-} from "./js/workout.js?v=202610250455";
+} from "./js/workout.js?v=202610251900";
 
 (function () {
 
@@ -586,7 +586,7 @@ import {
       notify("選択した履歴が見つかりませんでした。", "warn");
       return;
     }
-    replaceWorkout(hydrateWorkout(restored), "履歴を入力フォームへ戻しました。");
+    replaceWorkout(hydrateWorkout(restored), "前の記録を入れました。重さ・回数を直して送れます。");
   }
 
   // 「カードで送る」を押したとき。送り先を選んでいるあいだにもう一度押されても、送る画面は1つだけ
@@ -787,7 +787,7 @@ import {
     }
 
     if (!appState.history.length) {
-      elements.tabHistory.innerHTML = renderEmpty("🕘", "まだ履歴がありません。共有後にここへ表示されます（この端末に、新しいものから " + MAX_HISTORY_ITEMS + " 件まで残ります）。");
+      elements.tabHistory.innerHTML = renderEmpty("🕘", "まだ履歴がありません。カードで送ると、ここに出ます（この端末に、新しいものから " + MAX_HISTORY_ITEMS + " 件まで）。");
       return;
     }
 

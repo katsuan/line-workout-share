@@ -230,6 +230,14 @@ body:not(.ls-has-sendbar) .ls-toast {
   font-weight: 700;
   line-height: 1;
   cursor: pointer;
+  position: relative;
+}
+
+/* 見た目は 36px の丸、押せるところは 44px */
+.disclosure-toggle::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
 }
 
 .disclosure-chevron {

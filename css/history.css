@@ -38,17 +38,23 @@
   box-shadow: var(--ls-shadow);
 }
 
+/* 狭い画面では、題を1行ぶん使い、「この内容で入力」と開閉はその下の右に（題が「上半身ワーク／アウト」と折れないように） */
 .history-card-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 8px 12px;
   padding: 14px 16px;
 }
 
 .history-card-copy {
-  flex: 1;
+  flex: 1 1 12em;
   min-width: 0;
+}
+
+.history-card-head > .history-actions {
+  margin-left: auto;
 }
 
 .history-card-copy h4 {

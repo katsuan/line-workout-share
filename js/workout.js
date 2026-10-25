@@ -2,20 +2,20 @@
 // app.js・card.js・link.js から読む（import）
 import {
   EXERCISE_CATALOG
-} from "./catalog.js?v=202610250455";
+} from "./catalog.js?v=202610251900";
 import {
   roundNumber,
   toNullableNumber
-} from "./format.js?v=202610250455";
+} from "./format.js?v=202610251900";
 import {
   deepClone,
   generateId,
   getTodayLocalDate
-} from "./page.js?v=202610250455";
+} from "./page.js?v=202610251900";
 import {
   APP_CONFIG,
   DEFAULT_USER
-} from "./settings.js?v=202610250455";
+} from "./settings.js?v=202610251900";
 
 // 文字の長さの上限（入力欄の maxlength・送るカード・リンクの draft で同じ）
 export const TEXT_LIMITS = { title: 40, name: 60, memo: 200, catalogId: 40, muscle: 20, displayName: 20, altText: 400 };
