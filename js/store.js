@@ -1,4 +1,10 @@
-import { FEATURE_FLAGS, MAX_HISTORY_ITEMS, MAX_MENUS, STORAGE_KEYS } from "./constants.js?v=202610241455";
+// キロっく：端末に残すもの（記録の履歴・トレーニングメニュー）の読み書き。履歴（liff-workout-history）はつづくも読むので形を変えない
+import {
+  FEATURE_FLAGS,
+  MAX_HISTORY_ITEMS,
+  MAX_MENUS,
+  STORAGE_KEYS
+} from "./settings.js?v=202610250234";
 
 // 端末に書く。残せない（容量いっぱい・プライベートブラウズ）ときも止めない（送る・画面はそのまま使える）
 function writeList(key, list) {

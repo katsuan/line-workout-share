@@ -1,12 +1,3 @@
-window.APP_CONFIG = {
-  LIFF_ID: "2009927582-2isjfmkk",
-  APP_NAME: "kiloQ",
-  DEFAULT_GROUP_KEY: "default-group",
-  FEATURE_FLAGS: {
-    enableDebugMode: false,
-    enableLocalHistory: true,
-    enableStatsMock: false,
-    enableApiAdapter: false,
-    enableRanking: false
-  }
-};
+// 前の名前のファイル（2026-11-25 ごろに消す。README）。前の index.html を覚えているブラウザ（LINE の中など）のために、新しいファイルを読むだけ。
+// 今の index.html は js/line-config.js を読む
+document.write('<script src="./js/line-config.js?v=202610250234"></script>');

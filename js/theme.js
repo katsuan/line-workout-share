@@ -1,4 +1,9 @@
-import { DEFAULT_THEME, FLEX_THEME, STORAGE_KEYS } from "./constants.js?v=202610241455";
+
+import {
+  DEFAULT_THEME,
+  FLEX_THEME,
+  STORAGE_KEYS
+} from "./settings.js?v=202610250234";
 
 export function loadThemePreference() {
   try {

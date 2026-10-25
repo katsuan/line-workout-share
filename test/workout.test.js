@@ -10,11 +10,11 @@ const { checkMessages } = require(path.join(os.homedir(), "GitHub/q-oqrn/tools/q
 const XSS = "<img src=x onerror=alert(1)>"; // qcheck-ok: W8 テストの見本の文字（画面では動かさない）
 
 globalThis.window = { APP_CONFIG: { LIFF_ID: "2009927582-2isjfmkk", APP_NAME: "kiloQ" } };
-const W = await import("../js/workout.js");
-const U = await import("../js/utils.js");
+const W = { ...(await import("../js/workout.js")), ...(await import("../js/card.js")), ...(await import("../js/link.js")) };
+const U = { ...(await import("../js/page.js")), ...(await import("../js/format.js")), ...(await import("../js/link.js")) };
 
 const pack = (v) => U.encodeBase64Url(JSON.stringify(v));
-// main.js と同じ読み方（base64url → JSON → unpack。読めなければ null）
+// app.js と同じ読み方（base64url → JSON → unpack。読めなければ null）
 const readDraft = (raw) => W.readPackedWorkout(raw);
 const errorsOf = (message) => checkMessages([message]).filter((p) => p.level === "error");
 

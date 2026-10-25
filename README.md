@@ -21,35 +21,45 @@ GitHub Pages で配信する、静的なワークアウト共有アプリです�
   - `index.html`
   - `style.css`
     - CSS のエントリーポイント。`css/` 配下の partial を読み込みます。部品（見出しの行・タブ・カード・チップ・入力欄・ボタン・開閉・シート・送る帯・トースト）はおくるんの Q キット（`https://katsuan.github.io/line-share/shared/ui.css`・`ui.js`。使い方はおくるんの README の「Q キット」）を `index.html` で先に読み、`style.css` には、キロっくの色と字と、キロっくにしかない見た目だけを置く
-  - `config.js`
   - `app.js`
-    - エントリーポイント。`js/main.js` を読み込みます。
+    - 入口。UI 描画とイベント制御。押したときの処理は `CLICK_ACTIONS`（`data-action` の名前 → 処理）に並べる。入力の入れ替え（履歴・メニュー・サンプル・リセット）は `replaceWorkout` にまとめる。知らせは `notify`（Q キットのトースト）。消す・入れ替えるときは確かめのダイアログを出さず、すぐ変えてトーストの「元に戻す」で戻せるようにする（`undoInputChange`・`undoMenuChange`）
   - `css/base.css`
-    - キロっくの色と字（`:root` の `--ls-accent` などを #C96A2D に。キロっくにしかない部品の色は `--kq-*`）、ページ全体・見出しの行・タブ・送る帯（LINE の緑）・トーストの位置・シートの見出し
+    - キロっくの色と字（`:root` の `--ls-accent` などを #C96A2D に。キロっくにしかない部品の色は `--kq-*`）、ページ全体・見出しの行・タブ・送る帯・トーストの位置・シートの見出し
   - `css/input.css`
     - 入力の画面（始め方・入力中の帯・種目カード・部位と種目えらび・セットの行と −／＋）
   - `css/preview.css`
     - 送信プレビュー（LINE のトーク画面に近い枠と、送るカードの見本）、種目ごとの集計
   - `css/history.css`
     - 履歴、草グラフと表示設定のシート、トレーニングメニューのシート、ランキング（デバッグ用）
-  - `js/constants.js`
-    - 設定値、種目カタログ、 feature flag
+  - `js/line-config.js`
+    - LINE 版のつなぎ先の設定（LIFF の ID など）と、機能の ON/OFF（feature flag）。`index.html` で `app.js` より先に読む
+  - `js/settings.js`
+    - 設定値（端末に残すキー・数の上限・色）。`js/line-config.js` の中身を読む
+  - `js/catalog.js`
+    - 種目の一覧・部位の絞りこみ・おすすめメニュー
+  - `js/workout.js`
+    - 記録の形（種目・セット・推定1RM・ボリューム）と、トレーニングメニュー
+  - `js/card.js`
+    - 送るカード（Flex Message）を作る
+  - `js/link.js`
+    - URL の受け渡し（LINE 版を開く URL・「同じメニューでやる」の `?menu=`・作りかけの `?draft=`）
+  - `js/store.js`
+    - 端末に残すもの（履歴・トレーニングメニュー）の読み書き。履歴（`liff-workout-history`）はつづくも読むので形を変えない
   - `js/theme.js`
     - ベースカラー設定と CSS 変数反映（選んだ色から Q キットの `--ls-accent` などと `--kq-*` を作る）
   - `js/liff.js`
     - LIFF 初期化、プロフィール取得、 shareTargetPicker 利用可否
-  - `js/workout.js`
-    - ワークアウト生成、計算、整形、 Flex Message 生成
-  - `js/repositories.js`
-    - localStorage / API 保存アダプタ
-  - `js/utils.js`
-    - ID 生成、数値変換、エスケープなどの共通関数
   - `js/components.js`
     - 画面の部品（Q キットのボタン・チップ・入力欄・シート・空のとき、開閉の ▾）。HTML 文字列を返すだけで状態は持たない
+  - `js/format.js`
+    - 数と文字の形（重さ・回数の表し方・長さの上限・HTML に入れるときの書きかえ）
+  - `js/page.js`
+    - ページ全体で使う小さな道具（季節の絵文字・ID・今日の日付・中身の写し）
   - `js/fixtures.js`
     - 見本のデータ（「サンプルを入れる」の中身、ランキングのモック）
-  - `js/main.js`
-    - UI 描画とイベント制御。押したときの処理は `CLICK_ACTIONS`（`data-action` の名前 → 処理）に並べる。入力の入れ替え（履歴・メニュー・サンプル・リセット）は `replaceWorkout` にまとめる。知らせは `notify`（Q キットのトースト）。消す・入れ替えるときは確かめのダイアログを出さず、すぐ変えてトーストの「元に戻す」で戻せるようにする（`undoInputChange`・`undoMenuChange`）
+  - `config.js`・`js/main.js`
+    - 前の名前のファイル。前の index.html・app.js を覚えているブラウザ（LINE の中など）のために、新しいファイルを読むだけ。**2026-11-25 ごろに消す**
+- ファイルの名前は Q のツール共通の決まり（q-oqrn の docs/structure.md）にそろえている
 
 ### 現在の主な機能
 
@@ -69,7 +79,7 @@ GitHub Pages で配信する、静的なワークアウト共有アプリです�
   - 「入力中」の帯をタップすると、その種目へ移動
   - ユーザーアイコンからベースカラー設定
 - 種目候補
-  - `js/constants.js` 内にローカルの種目カタログを保持
+  - `js/catalog.js` 内にローカルの種目カタログを保持
   - 日本語名で管理
   - 部位ごとの候補表示
   - ボタン形式で選択
@@ -82,7 +92,7 @@ GitHub Pages で配信する、静的なワークアウト共有アプリです�
   - 記録入力の見出しの下の「📋 メニュー」からシートを開く（履歴があるときは隣に「🕘 履歴から」。2つは等幅で並べ、スマホでも見出しの行が詰まらないようにする）
   - 今の入力（種目・セットの重さと回数・メモ）に名前を付けて保存（名前の初期値はワークアウトタイトル。同じ名前は上書きし、トーストの「元に戻す」で戻せる。20件まで。localStorage の `liff-workout-menus`）
   - メニューを押すと、タイトルをメニュー名にした新しい入力にする（入力中の内容があったときは、トーストの「元に戻す」で前の入力に戻せる）。マイメニューは 🗑 ですぐ消す（「元に戻す」で戻せる）
-  - おすすめ（胸の日・背中の日・脚の日・肩・腕の日・全身）は `js/constants.js` の `MENU_PRESETS`。回数とセット数だけ入り、重さは空
+  - おすすめ（胸の日・背中の日・脚の日・肩・腕の日・全身）は `js/catalog.js` の `MENU_PRESETS`。回数とセット数だけ入り、重さは空
 - 履歴タブ
   - `localStorage` に保存した履歴の表示
   - 初期状態はアコーディオンを閉じて表示（見出しの行をタップで開閉）
@@ -109,7 +119,7 @@ GitHub Pages で配信する、静的なワークアウト共有アプリです�
 
 ### デバッグモード
 
-- `config.js` の `FEATURE_FLAGS.enableDebugMode` で切り替えます。
+- `js/line-config.js` の `FEATURE_FLAGS.enableDebugMode` で切り替えます。
 - デバッグモード時のみ以下を表示します。
   - Flex JSON コピー
   - Flex JSON プレビュー
@@ -117,7 +127,7 @@ GitHub Pages で配信する、静的なワークアウト共有アプリです�
 
 ## 設定
 
-`config.js` の設定値:
+`js/line-config.js` の設定値:
 
 - `LIFF_ID`
   - LIFF アプリ ID
@@ -200,7 +210,7 @@ GitHub Pages で配信する、静的なワークアウト共有アプリです�
 
 ### 1. 種目マスタの外出し
 
-現在は `js/constants.js` 内のローカル配列ですが、将来は次を想定しています。
+現在は `js/catalog.js` 内のローカル配列ですが、将来は次を想定しています。
 
 - JSON ファイル化
 - API / DB から取得

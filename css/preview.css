@@ -99,7 +99,12 @@
 }
 
 /* ---- 送るカードの見本（Flex Message と同じ並び） ---- */
+/* 送るカードの見本は、暗い表示でも白い地のまま（LINE のトークの見た目）。字の色も明るい表示の色にする */
 .preview-bubble {
+  --ls-text: #1f1f1c;
+  --ls-subtext: #6b6a63;
+  --kq-secondary: #264653;
+  color: var(--ls-text);
   padding: 12px;
   border: 1px solid var(--ls-accent);
   border-radius: var(--ls-radius-lg);

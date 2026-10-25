@@ -13,9 +13,9 @@ globalThis.localStorage = {
   removeItem: (k) => delete mem[k]
 };
 globalThis.window = { APP_CONFIG: { LIFF_ID: "2009927582-2isjfmkk", APP_NAME: "kiloQ" } };
-const W = await import("../js/workout.js");
-const C = await import("../js/constants.js");
-const R = await import("../js/repositories.js");
+const W = { ...(await import("../js/workout.js")), ...(await import("../js/card.js")), ...(await import("../js/link.js")) };
+const C = await import("../js/settings.js");
+const R = await import("../js/store.js");
 const repo = R.createLocalStorageWorkoutRepository(W.hydrateWorkout);
 const KEY = C.STORAGE_KEYS.history;
 

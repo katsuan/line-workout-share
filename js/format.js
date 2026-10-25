@@ -1,22 +1,4 @@
-// 推定1RM・ボリュームを計算できるセット（重さも回数も 1 以上）
-// 季節の絵文字（Q キットの season.js。tool-share.js があとから読む）を、うれしい瞬間の短い文にときどき足す。
-// なくても・止まっても、文はそのまま
-export function seasonal(text) {
-  try {
-    return window.QSeason ? window.QSeason.decorate(text) : text;
-  } catch (error) {
-    return text;
-  }
-}
-
-export function isValidSetInput(weight, reps) {
-  return weight !== null && reps !== null && weight > 0 && reps > 0;
-}
-
-// 記録として残すセット（重さ・回数が両方入っていればよい。0kg は自重、0回は挑戦の記録）
-export function isRecordedSetInput(weight, reps) {
-  return weight !== null && reps !== null && weight >= 0 && reps >= 0;
-}
+// キロっく：数と文字の形（重さ・回数の表し方・長さの上限・HTML に入れるときの書きかえ）
 
 export function toNullableNumber(value) {
   if (value === "" || value === null || value === undefined) {
@@ -50,20 +32,6 @@ export function roundNumber(value, digits) {
   return Math.round(Number(value || 0) * precision) / precision;
 }
 
-export function generateId(prefix) {
-  return prefix + "-" + Math.random().toString(36).slice(2, 10);
-}
-
-export function getTodayLocalDate() {
-  const now = new Date();
-  const offset = now.getTimezoneOffset();
-  return new Date(now.getTime() - offset * 60 * 1000).toISOString().slice(0, 10);
-}
-
-export function deepClone(value) {
-  return JSON.parse(JSON.stringify(value));
-}
-
 export function truncateText(text, maxLength) {
   const normalized = String(text || "");
   if (normalized.length <= maxLength) {
@@ -93,22 +61,4 @@ export function formatFlexWeight(weight) {
     return "自重";
   }
   return Number(weight).toFixed(1) + " kg";
-}
-
-// 文字列（日本語を含む JSON など）を URL に入れられる形にする（UTF-8 → base64url）
-export function encodeBase64Url(text) {
-  const bytes = new TextEncoder().encode(text);
-  let binary = "";
-  bytes.forEach(function (b) {
-    binary += String.fromCharCode(b);
-  });
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-export function decodeBase64Url(text) {
-  const b64 = String(text || "").replace(/-/g, "+").replace(/_/g, "/");
-  const binary = atob(b64 + "===".slice((b64.length + 3) % 4));
-  return new TextDecoder().decode(Uint8Array.from(binary, function (c) {
-    return c.charCodeAt(0);
-  }));
 }
