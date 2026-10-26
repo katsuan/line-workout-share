@@ -3,12 +3,12 @@
 import {
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
   getCreditText
-} from "./js/card.js?v=202610261700";
+} from "./js/card.js?v=202610261900";
 import {
   EXERCISE_CATALOG,
   MENU_PRESETS,
   MUSCLE_FILTERS
-} from "./js/catalog.js?v=202610261700";
+} from "./js/catalog.js?v=202610261900";
 import {
   renderButton,
   renderChip,
@@ -17,16 +17,16 @@ import {
   renderField,
   renderSheet,
   renderStartButton
-} from "./js/components.js?v=202610261700";
+} from "./js/components.js?v=202610261900";
 import {
   buildSampleWorkout,
   mockRanking
-} from "./js/fixtures.js?v=202610261700";
+} from "./js/fixtures.js?v=202610261900";
 import {
   cssEscape,
   escapeHtml,
   formatLocaleMetric
-} from "./js/format.js?v=202610261700";
+} from "./js/format.js?v=202610261900";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -34,19 +34,19 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./js/liff.js?v=202610261700";
+} from "./js/liff.js?v=202610261900";
 import {
   encodeBase64Url,
   packWorkoutDraft,
   readPackedWorkout,
   unpackWorkoutDraft
-} from "./js/link.js?v=202610261700";
+} from "./js/link.js?v=202610261900";
 import {
   deepClone,
   generateId,
   getTodayLocalDate,
   seasonal
-} from "./js/page.js?v=202610261700";
+} from "./js/page.js?v=202610261900";
 import {
   APP_CONFIG,
   DEFAULT_THEME,
@@ -55,20 +55,20 @@ import {
   MAX_HISTORY_ITEMS,
   MAX_MENUS,
   STORAGE_KEYS
-} from "./js/settings.js?v=202610261700";
+} from "./js/settings.js?v=202610261900";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./js/store.js?v=202610261700";
-import { startOfWeek, weekStreak } from "./js/streak.js?v=202610261700";
+} from "./js/store.js?v=202610261900";
+import { startOfWeek, weekStreak } from "./js/streak.js?v=202610261900";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./js/theme.js?v=202610261700";
+} from "./js/theme.js?v=202610261900";
 import {
   buildMenuFromWorkout,
   calculateWorkout,
@@ -89,7 +89,7 @@ import {
   sanitizeWorkout as sanitizeWorkoutModel,
   summarizeMenu,
   TEXT_LIMITS
-} from "./js/workout.js?v=202610261700";
+} from "./js/workout.js?v=202610261900";
 
 (function () {
 
@@ -2016,13 +2016,17 @@ import {
   // シートのいちばん上：だれでログインしているか・LINE 版とブラウザ版の記録のちがい（つづく・しょくじと同じ言葉。shared/line-me.js の describe）
   function renderLoginRows() {
     if (!lineMe || !window.QLineMe) return "";
+    const status = lineMe.status();
+    // ログインしていないときは、ここからもログインできる（下の帯の「🔑 ログインして送る」と同じ。入力は残る）
+    const canLogin = !status.loggedIn && !!window.liff && typeof window.liff.login === "function";
     const rows = window.QLineMe.describe(
-      Object.assign({}, lineMe.status(), { bot: false, moveHint: "ページの下の「💾 この端末の記録をバックアップ」でうつせます" })
+      Object.assign({}, status, { canLogin: canLogin, bot: false, moveHint: "ページの下の「💾 この端末の記録をバックアップ」でうつせます" })
     );
     return (
       '<ul class="login-rows">' +
       rows.map((row) => '<li><span aria-hidden="true">' + escapeHtml(row.icon) + "</span><span>" + escapeHtml(row.text) + "</span></li>").join("") +
-      "</ul>"
+      "</ul>" +
+      (canLogin ? '<button class="ls-button is-block login-rows-button" data-action="line-login" type="button">🔑 LINE でログイン</button>' : "")
     );
   }
 

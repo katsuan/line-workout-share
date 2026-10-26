@@ -453,3 +453,10 @@ textarea.memo-input {
   margin-left: 4px;
   font-size: inherit;
 }
+
+/* 「あなたの記録」のシートの「🔑 LINE でログイン」（ログインしていないときだけ） */
+.login-rows-button {
+  margin-bottom: 4px;
+  border-color: #06c755;
+  color: #06a148;
+}
