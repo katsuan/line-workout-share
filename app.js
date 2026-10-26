@@ -3,12 +3,12 @@
 import {
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
   getCreditText
-} from "./js/card.js?v=202610251900";
+} from "./js/card.js?v=202610261030";
 import {
   EXERCISE_CATALOG,
   MENU_PRESETS,
   MUSCLE_FILTERS
-} from "./js/catalog.js?v=202610251900";
+} from "./js/catalog.js?v=202610261030";
 import {
   renderButton,
   renderChip,
@@ -17,16 +17,16 @@ import {
   renderField,
   renderSheet,
   renderStartButton
-} from "./js/components.js?v=202610251900";
+} from "./js/components.js?v=202610261030";
 import {
   buildSampleWorkout,
   mockRanking
-} from "./js/fixtures.js?v=202610251900";
+} from "./js/fixtures.js?v=202610261030";
 import {
   cssEscape,
   escapeHtml,
   formatLocaleMetric
-} from "./js/format.js?v=202610251900";
+} from "./js/format.js?v=202610261030";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -34,19 +34,19 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./js/liff.js?v=202610251900";
+} from "./js/liff.js?v=202610261030";
 import {
   encodeBase64Url,
   packWorkoutDraft,
   readPackedWorkout,
   unpackWorkoutDraft
-} from "./js/link.js?v=202610251900";
+} from "./js/link.js?v=202610261030";
 import {
   deepClone,
   generateId,
   getTodayLocalDate,
   seasonal
-} from "./js/page.js?v=202610251900";
+} from "./js/page.js?v=202610261030";
 import {
   APP_CONFIG,
   DEFAULT_THEME,
@@ -55,19 +55,20 @@ import {
   MAX_HISTORY_ITEMS,
   MAX_MENUS,
   STORAGE_KEYS
-} from "./js/settings.js?v=202610251900";
+} from "./js/settings.js?v=202610261030";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./js/store.js?v=202610251900";
+} from "./js/store.js?v=202610261030";
+import { startOfWeek, weekStreak } from "./js/streak.js?v=202610261030";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./js/theme.js?v=202610251900";
+} from "./js/theme.js?v=202610261030";
 import {
   buildMenuFromWorkout,
   calculateWorkout,
@@ -88,7 +89,7 @@ import {
   sanitizeWorkout as sanitizeWorkoutModel,
   summarizeMenu,
   TEXT_LIMITS
-} from "./js/workout.js?v=202610251900";
+} from "./js/workout.js?v=202610261030";
 
 (function () {
 
@@ -1140,6 +1141,7 @@ import {
     "open-settings-modal": function () {
       appState.ui.settingsModalOpen = true;
       renderInput();
+      showLatestWeeks();
     },
     "close-settings-modal": function () {
       appState.ui.settingsModalOpen = false;
@@ -1149,6 +1151,12 @@ import {
       resetTheme();
       renderInput();
       renderPreview();
+    },
+    // 週のはじまり（月曜・日曜）。Q 共通の設定なので、同じ端末のつづく・くるかな・BabyQ にもそろう
+    "set-week-start": function (data) {
+      setWeekStart(Number(data.weekStart));
+      renderInput();
+      showLatestWeeks();
     }
   };
 
@@ -1914,7 +1922,7 @@ import {
     ].join("");
   }
 
-  // 表示設定のシート（色・草グラフ）の HTML を返す。閉じているときは ""
+  // 表示設定のシート（草グラフ・週のはじまり・色）の HTML を返す。閉じているときは ""
   function renderSettingsSheet() {
     if (!appState.ui.settingsModalOpen) {
       return "";
@@ -1926,6 +1934,7 @@ import {
       closeAction: "close-settings-modal",
       body: [
         renderGrass(),
+        renderWeekStartField(),
         '<h4 class="sheet-subtitle">表示設定</h4>',
         '<p class="ls-hint">アプリと送信プレビューの基調色を変更できます。</p>',
         '<div class="settings-color-row">',
@@ -1948,12 +1957,44 @@ import {
     });
   }
 
-  // ---- 草グラフ（GitHub のように、記録した日のます目を塗る） ----
-  // この端末の履歴（送った記録）から、日ごとのセット数で4段階に塗る。いちばん右の列が今週（月曜はじまり）
-  const GRASS_WEEKS = 18;
+  // ---- 週のはじまり（Q 共通の設定。q-oqrn の shared/week-start.js。はじめは月曜） ----
+  // 共通の設定が読めないとき（電波がなく、まだ保存もないなど）は、開いているあいだだけここで覚える
+  let weekStartHere = 1;
 
-  // 草グラフ（日ごとのセット数を、月曜はじまりの週で並べる）の HTML を返す
+  // 週のはじまりを返す（1＝月曜・0＝日曜）
+  function getWeekStart() {
+    return window.QWeekStart ? window.QWeekStart.get(weekStartHere) : weekStartHere;
+  }
+
+  // 週のはじまりを変える（共通の設定にも残す）
+  function setWeekStart(value) {
+    weekStartHere = value === 0 ? 0 : 1;
+    if (window.QWeekStart) window.QWeekStart.set(weekStartHere);
+  }
+
+  // 表示設定の「週のはじまり」（月曜・日曜のチップ）の HTML を返す
+  function renderWeekStartField() {
+    const now = getWeekStart();
+    return [
+      '<div class="week-start-field">',
+      '  <p class="ls-label" id="week-start-label">週のはじまり</p>',
+      '  <div class="ls-chips" role="group" aria-labelledby="week-start-label">',
+      renderChip({ label: "月曜", action: "set-week-start", pressed: now === 1, attrs: { "data-week-start": "1" } }),
+      renderChip({ label: "日曜", action: "set-week-start", pressed: now === 0, attrs: { "data-week-start": "0" } }),
+      "  </div>",
+      '  <p class="ls-hint">ほかの Q のツールにもそろいます。</p>',
+      "</div>"
+    ].join("");
+  }
+
+  // ---- 草グラフ（GitHub のように、記録した日のます目を塗る） ----
+  // この端末の履歴（送った記録）から、日ごとのセット数で4段階に塗る。いちばん右の列が今週（週のはじまりは設定どおり）
+  const GRASS_WEEKS = 18;
+  const DAY_NAMES = ["日", "月", "火", "水", "木", "金", "土"];
+
+  // 草グラフ（日ごとのセット数を、週のはじまりから並べる）と、記録した週の連続の HTML を返す
   function renderGrass() {
+    const weekStart = getWeekStart();
     const setsByDay = {};
     appState.history.forEach(function (workout) {
       if (!/^\d{4}-\d{2}-\d{2}$/.test(String(workout.date || ""))) return;
@@ -1968,57 +2009,74 @@ import {
     };
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const start = new Date(today);
-    start.setDate(start.getDate() - ((today.getDay() + 6) % 7) - (GRASS_WEEKS - 1) * 7); // GRASS_WEEKS 週前の月曜
+    const start = startOfWeek(today, weekStart);
+    start.setDate(start.getDate() - (GRASS_WEEKS - 1) * 7); // GRASS_WEEKS 週前の週のはじまり
     // セット数から草の濃さ（0〜4）を返す
     const level = function (sets) {
       return sets <= 0 ? 0 : sets < 6 ? 1 : sets < 12 ? 2 : sets < 20 ? 3 : 4;
     };
 
     let days = 0;
-    let best = 0;
-    let run = 0;
     const columns = [];
     for (let week = 0; week < GRASS_WEEKS; week += 1) {
       const cells = [];
       let monthLabel = "";
-      for (let dow = 0; dow < 7; dow += 1) {
+      for (let row = 0; row < 7; row += 1) {
         const d = new Date(start);
-        d.setDate(start.getDate() + week * 7 + dow);
+        d.setDate(start.getDate() + week * 7 + row);
         // 月の1日がある列に月を書く。いちばん左の列は、次の週で月が変わらないときだけ（ラベルが重ならないように）
-        if (d.getDate() === 1 || (week === 0 && dow === 0 && d.getDate() <= 21)) monthLabel = String(d.getMonth() + 1) + "月";
+        if (d.getDate() === 1 || (week === 0 && row === 0 && d.getDate() <= 21)) monthLabel = String(d.getMonth() + 1) + "月";
         if (d > today) {
           cells.push('<span class="grass-cell is-future"></span>');
           continue;
         }
-        const key = toKey(d);
-        const sets = setsByDay[key] || 0;
-        if (sets > 0) {
-          days += 1;
-          run += 1;
-          best = Math.max(best, run);
-        } else {
-          run = 0;
-        }
+        const sets = setsByDay[toKey(d)] || 0;
+        if (sets > 0) days += 1;
         const label = (d.getMonth() + 1) + "/" + d.getDate() + (sets ? " ・ " + sets + "セット" : " ・ 記録なし");
         cells.push('<span class="grass-cell is-level-' + level(sets) + '" title="' + escapeHtml(label) + '"></span>');
       }
       columns.push('<div class="grass-week"><span class="grass-month">' + escapeHtml(monthLabel) + "</span>" + cells.join("") + "</div>");
     }
+    // 左の曜日：月・水・金だけ書く（週のはじまりが日曜なら1段下がる）
+    const dayLabels = [0, 1, 2, 3, 4, 5, 6].map(function (row) {
+      const name = DAY_NAMES[(weekStart + row) % 7];
+      return "<span>" + (name === "月" || name === "水" || name === "金" ? name : "") + "</span>";
+    });
 
     return [
       '<section class="grass" aria-label="記録した日（' + GRASS_WEEKS + '週）">',
       '  <div class="grass-grid">',
-      '    <div class="grass-days" aria-hidden="true"><span></span><span>月</span><span></span><span>水</span><span></span><span>金</span><span></span><span></span></div>',
+      '    <div class="grass-days" aria-hidden="true"><span></span>' + dayLabels.join("") + "</div>",
       columns.join(""),
       "  </div>",
       '  <div class="grass-foot">',
-      '    <p class="grass-stats">' + GRASS_WEEKS + "週で <b>" + days + "日</b> ・ 最長 <b>" + best + "日</b> 連続</p>",
+      '    <p class="grass-stats">' + GRASS_WEEKS + "週で <b>" + days + "日</b></p>",
       '    <p class="grass-legend" aria-hidden="true">少<span class="grass-cell is-level-0"></span><span class="grass-cell is-level-1"></span><span class="grass-cell is-level-2"></span><span class="grass-cell is-level-3"></span><span class="grass-cell is-level-4"></span>多</p>',
       "  </div>",
+      renderStreak(weekStreak(Object.keys(setsByDay), weekStart)),
       '  <p class="ls-hint">この端末で送った記録から数えています（1日のセット数で色が濃くなります）。</p>',
       "</section>"
     ].join("");
+  }
+
+  // 草グラフは右が今週。狭い画面では横に動かせるので、はじめは右のはし（今週）を見せる
+  function showLatestWeeks() {
+    document.querySelectorAll(".grass-grid").forEach(function (grid) {
+      grid.scrollLeft = grid.scrollWidth;
+    });
+  }
+
+  // 記録した週の連続（いま・最長）の1行の HTML を返す。今週まだなら「今週やれば ◯週」
+  function renderStreak(streak) {
+    // 「最長 3週」は1かたまりで折り返す（320px で「最／長」と折れないように）
+    const best = ' ・ <span class="ls-nowrap">最長 <b>' + streak.best + "週</b></span>";
+    if (streak.thisWeek) {
+      return '<p class="grass-streak">🔥 いま <b>' + streak.current + "週</b> 連続" + best + "</p>";
+    }
+    if (streak.current > 0) {
+      return '<p class="grass-streak">🔥 <b>' + streak.current + '週</b> 連続中<span class="ls-nowrap">（今週やれば ' + (streak.current + 1) + "週）</span>" + best + "</p>";
+    }
+    return '<p class="grass-streak">今週やると、連続がはじまります' + (streak.best ? best : "") + "</p>";
   }
 
   // ---- トレーニングメニュー（テンプレート） ----

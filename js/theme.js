@@ -4,7 +4,7 @@ import {
   DEFAULT_THEME,
   FLEX_THEME,
   STORAGE_KEYS
-} from "./settings.js?v=202610251900";
+} from "./settings.js?v=202610261030";
 
 // 端末に覚えた表示設定（色）を読んで返す（なければ初めの色）
 export function loadThemePreference() {

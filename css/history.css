@@ -124,6 +124,14 @@
   flex: 0 0 auto;
 }
 
+/* 狭い画面で横に動かしても、左の曜日（月・水・金）は残す */
+.grass-days {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--ls-surface);
+}
+
 .grass-days span {
   width: 14px;
   color: var(--ls-subtext);
@@ -179,6 +187,23 @@
 .grass-stats {
   margin: 0;
   font-size: 0.85rem;
+}
+
+/* 記録した週の連続（「🔥 いま 3週 連続 ・ 最長 5週」） */
+.grass-streak {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* 週のはじまり（月曜・日曜） */
+.week-start-field {
+  display: grid;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.week-start-field .ls-label {
+  margin: 0;
 }
 
 .grass-legend {
