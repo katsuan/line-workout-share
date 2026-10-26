@@ -3,12 +3,12 @@
 import {
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
   getCreditText
-} from "./js/card.js?v=202610261030";
+} from "./js/card.js?v=202610261300";
 import {
   EXERCISE_CATALOG,
   MENU_PRESETS,
   MUSCLE_FILTERS
-} from "./js/catalog.js?v=202610261030";
+} from "./js/catalog.js?v=202610261300";
 import {
   renderButton,
   renderChip,
@@ -17,16 +17,16 @@ import {
   renderField,
   renderSheet,
   renderStartButton
-} from "./js/components.js?v=202610261030";
+} from "./js/components.js?v=202610261300";
 import {
   buildSampleWorkout,
   mockRanking
-} from "./js/fixtures.js?v=202610261030";
+} from "./js/fixtures.js?v=202610261300";
 import {
   cssEscape,
   escapeHtml,
   formatLocaleMetric
-} from "./js/format.js?v=202610261030";
+} from "./js/format.js?v=202610261300";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -34,19 +34,19 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./js/liff.js?v=202610261030";
+} from "./js/liff.js?v=202610261300";
 import {
   encodeBase64Url,
   packWorkoutDraft,
   readPackedWorkout,
   unpackWorkoutDraft
-} from "./js/link.js?v=202610261030";
+} from "./js/link.js?v=202610261300";
 import {
   deepClone,
   generateId,
   getTodayLocalDate,
   seasonal
-} from "./js/page.js?v=202610261030";
+} from "./js/page.js?v=202610261300";
 import {
   APP_CONFIG,
   DEFAULT_THEME,
@@ -55,20 +55,20 @@ import {
   MAX_HISTORY_ITEMS,
   MAX_MENUS,
   STORAGE_KEYS
-} from "./js/settings.js?v=202610261030";
+} from "./js/settings.js?v=202610261300";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./js/store.js?v=202610261030";
-import { startOfWeek, weekStreak } from "./js/streak.js?v=202610261030";
+} from "./js/store.js?v=202610261300";
+import { startOfWeek, weekStreak } from "./js/streak.js?v=202610261300";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./js/theme.js?v=202610261030";
+} from "./js/theme.js?v=202610261300";
 import {
   buildMenuFromWorkout,
   calculateWorkout,
@@ -89,7 +89,7 @@ import {
   sanitizeWorkout as sanitizeWorkoutModel,
   summarizeMenu,
   TEXT_LIMITS
-} from "./js/workout.js?v=202610261030";
+} from "./js/workout.js?v=202610261300";
 
 (function () {
 
@@ -135,6 +135,12 @@ import {
 
   // 送り先を選んでいるあいだにもう一度押されても、送る画面は1つだけ
   let sharing = false;
+  // 見出しの右の本人のアイコン（shared/line-me.js の mount の返事。読めなければ null）と、LIFF を起こし終えた約束
+  let lineMe = null;
+  let liffDone = () => {};
+  const liffReadyPromise = new Promise((resolve) => {
+    liffDone = resolve;
+  });
 
   document.addEventListener("DOMContentLoaded", initApp);
 
@@ -173,6 +179,19 @@ import {
       appState.rankingData = await getRanking();
     }
 
+    // 見出しの右に本人のアイコン（つづく・しょくじと同じ見た目。Q キットの shared/line-me.js）。
+    // 押すと「あなたの記録」と設定のシート。キロっくはボットにつながないので、ボットの行・送っていない数は出さない。
+    // ブラウザ版でも出す（設定を開くため。ログインしていないので灰色のふち）
+    lineMe = window.QLineMe
+      ? window.QLineMe.mount({
+          liffId: APP_CONFIG.LIFF_ID,
+          show: true,
+          bot: false,
+          ready: liffReadyPromise,
+          initial: isNamed(appState.liff.profile) ? { name: appState.liff.profile.displayName, picture: appState.liff.profile.pictureUrl || "" } : null,
+          onOpen: openSettingsSheet
+        })
+      : null;
     renderShell();
     renderInput();
     renderPreview();
@@ -182,6 +201,7 @@ import {
     }
 
     const liffResult = await initLiff();
+    liffDone();
     // 知らせは1つずつなので、LINE とつながらない知らせを先に出し、下の「元に戻す」「新しく作る」のある知らせで上書きする
     if (!liffResult.ready) {
       notify(
@@ -705,7 +725,8 @@ import {
     const html = [
       '<div class="input-stack">',
       '  <div class="input-page-head">',
-      renderSettingsTrigger(),
+      // アイコンは見出し（ロゴの右）に出す（Q キットの shared/line-me.js）。読めなかったときだけ、ここに前のボタン
+      lineMe ? "" : renderSettingsTrigger(),
       '    <h2 class="panel-title">記録入力</h2>',
       "  </div>",
       renderInputStartActions(),
@@ -1139,9 +1160,7 @@ import {
       toggleExerciseMemo(data.exerciseId);
     },
     "open-settings-modal": function () {
-      appState.ui.settingsModalOpen = true;
-      renderInput();
-      showLatestWeeks();
+      openSettingsSheet();
     },
     "close-settings-modal": function () {
       appState.ui.settingsModalOpen = false;
@@ -1922,6 +1941,32 @@ import {
     ].join("");
   }
 
+  // 「あなたの記録」と設定のシートを開く（見出しのアイコン・前のボタンから）
+  function openSettingsSheet() {
+    appState.ui.settingsModalOpen = true;
+    renderInput();
+    showLatestWeeks();
+  }
+
+  // 名前のある LINE のプロフィールか（名前なし・anonymous でない）
+  function isNamed(profile) {
+    const name = profile ? String(profile.displayName || "").trim().toLowerCase() : "";
+    return !!name && name !== "anonymous";
+  }
+
+  // シートのいちばん上：だれでログインしているか・LINE 版とブラウザ版の記録のちがい（つづく・しょくじと同じ言葉。shared/line-me.js の describe）
+  function renderLoginRows() {
+    if (!lineMe || !window.QLineMe) return "";
+    const rows = window.QLineMe.describe(
+      Object.assign({}, lineMe.status(), { bot: false, moveHint: "ページの下の「💾 この端末の記録をバックアップ」でうつせます" })
+    );
+    return (
+      '<ul class="login-rows">' +
+      rows.map((row) => '<li><span aria-hidden="true">' + escapeHtml(row.icon) + "</span><span>" + escapeHtml(row.text) + "</span></li>").join("") +
+      "</ul>"
+    );
+  }
+
   // 表示設定のシート（草グラフ・週のはじまり・色）の HTML を返す。閉じているときは ""
   function renderSettingsSheet() {
     if (!appState.ui.settingsModalOpen) {
@@ -1933,6 +1978,7 @@ import {
       title: "あなたの記録",
       closeAction: "close-settings-modal",
       body: [
+        renderLoginRows(),
         renderGrass(),
         renderWeekStartField(),
         '<h4 class="sheet-subtitle">表示設定</h4>',
