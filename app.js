@@ -3,12 +3,12 @@
 import {
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
   getCreditText
-} from "./js/card.js?v=202610261300";
+} from "./js/card.js?v=202610261500";
 import {
   EXERCISE_CATALOG,
   MENU_PRESETS,
   MUSCLE_FILTERS
-} from "./js/catalog.js?v=202610261300";
+} from "./js/catalog.js?v=202610261500";
 import {
   renderButton,
   renderChip,
@@ -17,16 +17,16 @@ import {
   renderField,
   renderSheet,
   renderStartButton
-} from "./js/components.js?v=202610261300";
+} from "./js/components.js?v=202610261500";
 import {
   buildSampleWorkout,
   mockRanking
-} from "./js/fixtures.js?v=202610261300";
+} from "./js/fixtures.js?v=202610261500";
 import {
   cssEscape,
   escapeHtml,
   formatLocaleMetric
-} from "./js/format.js?v=202610261300";
+} from "./js/format.js?v=202610261500";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -34,19 +34,19 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./js/liff.js?v=202610261300";
+} from "./js/liff.js?v=202610261500";
 import {
   encodeBase64Url,
   packWorkoutDraft,
   readPackedWorkout,
   unpackWorkoutDraft
-} from "./js/link.js?v=202610261300";
+} from "./js/link.js?v=202610261500";
 import {
   deepClone,
   generateId,
   getTodayLocalDate,
   seasonal
-} from "./js/page.js?v=202610261300";
+} from "./js/page.js?v=202610261500";
 import {
   APP_CONFIG,
   DEFAULT_THEME,
@@ -55,20 +55,20 @@ import {
   MAX_HISTORY_ITEMS,
   MAX_MENUS,
   STORAGE_KEYS
-} from "./js/settings.js?v=202610261300";
+} from "./js/settings.js?v=202610261500";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./js/store.js?v=202610261300";
-import { startOfWeek, weekStreak } from "./js/streak.js?v=202610261300";
+} from "./js/store.js?v=202610261500";
+import { startOfWeek, weekStreak } from "./js/streak.js?v=202610261500";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./js/theme.js?v=202610261300";
+} from "./js/theme.js?v=202610261500";
 import {
   buildMenuFromWorkout,
   calculateWorkout,
@@ -89,7 +89,7 @@ import {
   sanitizeWorkout as sanitizeWorkoutModel,
   summarizeMenu,
   TEXT_LIMITS
-} from "./js/workout.js?v=202610261300";
+} from "./js/workout.js?v=202610261500";
 
 (function () {
 
@@ -751,6 +751,32 @@ import {
     updateActionBar();
   }
 
+  // 履歴がいっぱい（10件）のとき：送ると、いちばん古い記録が消えることを、送る前に知らせる（控えのダウンロードへ）。
+  // 9件のときは「あと1件でいっぱい」。送れる形になってから出す（入れる前から出すと、うるさいので）。同じ記録を送りなおすとき（履歴の中の記録を置きかえるだけ）は出さない
+  function renderHistoryFullNote() {
+    const list = appState.history || [];
+    if (list.some((item) => item.workoutId === appState.workout.workoutId)) return "";
+    if (list.length >= MAX_HISTORY_ITEMS) {
+      const oldest = list[list.length - 1] || {};
+      const name = [formatShortDate(oldest.date), String(oldest.title || "").trim()].filter(Boolean).join(" ");
+      return (
+        '<p class="talk-preview-note is-warn history-full-note">履歴は ' + MAX_HISTORY_ITEMS + " 件まで。送ると、いちばん古い記録" +
+        (name ? "（" + escapeHtml(name) + "）" : "") +
+        'が消えます。<button class="text-link-button" data-action="download-history" type="button">⬇️ 先に控えをダウンロード</button></p>'
+      );
+    }
+    if (list.length === MAX_HISTORY_ITEMS - 1) {
+      return '<p class="talk-preview-note history-full-note">履歴はあと1件でいっぱい（' + MAX_HISTORY_ITEMS + " 件まで）。そのあとは、送るたびにいちばん古い記録が消えます。</p>";
+    }
+    return "";
+  }
+
+  // 「2026-10-01」→「10/1」（読めなければ ""）
+  function formatShortDate(date) {
+    const m = String(date || "").match(/^\d{4}-(\d{2})-(\d{2})$/);
+    return m ? Number(m[1]) + "/" + Number(m[2]) : "";
+  }
+
   // 送信プレビュー（送るカードの見本・この記録の集計）を描きなおす。作りかけも端末に残す
   function renderPreview() {
     keepLocalDraft(); // 入力が変わるたびに呼ばれるので、ここで作りかけを端末に残す
@@ -779,6 +805,7 @@ import {
         : '<p class="talk-preview-note is-warn">送る前に：' +
         escapeHtml(validation.errors.join(" ")) +
         "</p>",
+      validation.valid ? renderHistoryFullNote() : "",
       "  </section>",
       isOpen ? renderExerciseMetrics(calculatedWorkout) : "",
       isDebugModeEnabled()
@@ -1116,6 +1143,10 @@ import {
     },
     "reset-workout": function () {
       resetWorkout();
+    },
+    // 「✏️ 新しく」：空の記録からはじめる（入れていた種目があれば「元に戻す」で戻せる）
+    "new-workout": function () {
+      replaceWorkout(createEmptyWorkout(), "新しい記録をはじめます。");
     },
     "remove-exercise": function (data) {
       removeExercise(data.exerciseId);
@@ -1907,14 +1938,16 @@ import {
 
   // 始め方：保存したメニュー（とおすすめ）か、履歴から入れる。スマホでも詰まらないよう見出しとは別の行に、等幅で並べる
   // （履歴がなければメニューだけを1列で）
+  // 入力の始め方は3つ：新しく（空から）・メニューから（保存した組み合わせ）・履歴から（前に送った記録）。履歴がまだなければ2つ
   function renderInputStartActions() {
     const buttons = [
-      renderStartButton({ icon: "📋", label: "メニュー", sub: "保存・呼び出し", action: "open-menu-modal" })
+      renderStartButton({ icon: "✏️", label: "新しく", sub: "空から入れる", action: "new-workout" }),
+      renderStartButton({ icon: "📋", label: "メニュー", sub: "保存したもの", action: "open-menu-modal" })
     ];
     if (appState.history.length) {
       buttons.push(renderStartButton({ icon: "🕘", label: "履歴から", sub: "前の記録を使う", action: "open-history-input" }));
     }
-    return '<div class="input-start-row" role="group" aria-label="入力の始め方">' + buttons.join("") + "</div>";
+    return '<div class="input-start-row is-' + buttons.length + '" role="group" aria-label="入力の始め方">' + buttons.join("") + "</div>";
   }
 
   // 入力の画面のいちばん下の小さな操作（サンプル・リセット）の HTML を返す
@@ -1923,7 +1956,6 @@ import {
       // 補助的な操作は一番下に小さく（「履歴から始める」は見出しの横へ移した）
       '<div class="input-utility-row">',
       '  <button class="text-link-button" data-action="sample-workout" type="button">サンプルを入れる</button>',
-      '  <button class="text-link-button is-danger" data-action="reset-workout" type="button">入力をリセット</button>',
       "</div>"
     ].join("");
   }

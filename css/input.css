@@ -81,6 +81,19 @@
   cursor: pointer;
 }
 
+/* 3つ並ぶときは、アイコンを上・文字を下にして、せまい画面でも名前が切れないように */
+.input-start-row.is-3 .input-start-button {
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 6px;
+  text-align: center;
+}
+
+.input-start-row.is-3 .input-start-sub {
+  font-size: 0.7rem;
+}
+
 .input-start-button:active {
   background: var(--ls-accent-soft);
 }
@@ -432,4 +445,11 @@ textarea.memo-input {
   font-size: 14px;
   line-height: 1.6;
   overflow-wrap: anywhere;
+}
+
+/* 履歴がいっぱいのときの知らせ（送信プレビューの下）。控えのダウンロードへのリンクつき */
+.history-full-note .text-link-button {
+  display: inline;
+  margin-left: 4px;
+  font-size: inherit;
 }
