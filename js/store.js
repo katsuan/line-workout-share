@@ -5,7 +5,7 @@ import {
   MAX_HISTORY_ITEMS,
   MAX_MENUS,
   STORAGE_KEYS
-} from "./settings.js?v=202610261900";
+} from "./settings.js?v=202610262400";
 
 // 端末に書く。残せない（容量いっぱい・プライベートブラウズ）ときも止めない（送る・画面はそのまま使える）
 function writeList(key, list) {

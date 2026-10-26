@@ -1,10 +1,12 @@
 // キロっく：LINE とつなぐところ（LIFF の準備・LINE の名前と写真・送り先選びが使えるか・ブラウザ版から LINE 版へ移る URL とログイン）。
+// LIFF を起こす・送れるか・ログイン・LINE 版か は Q キットの shared/liff.js（window.LineShareLiff）に任せる（ほかのツールと同じ動き）。
+// ここに残すのは、キロっくだけのもの（名前と写真を覚える・入力中の記録を持って LINE 版へ移る URL）。
 // app.js から読む（import）
 import {
   APP_CONFIG,
   DEFAULT_USER,
   STORAGE_KEYS
-} from "./settings.js?v=202610261900";
+} from "./settings.js?v=202610262400";
 
 // LIFF を準備して、使えるか・送れるか・LINE の名前を返す（使えないときも止めない）
 export async function initLiff({ cachedProfile }) {
@@ -24,7 +26,14 @@ export async function initLiff({ cachedProfile }) {
   }
 
   try {
-    await window.liff.init({ liffId: APP_CONFIG.LIFF_ID });
+    // Q キットの LineShareLiff で起こす（10秒で終わらなければ、ほかのツールと同じく見本だけで動く）
+    const kit = window.LineShareLiff;
+    if (kit) {
+      const result = await kit.init({ login: "none" });
+      if (!result.ready) throw new Error(result.reason || "failed");
+    } else {
+      await window.liff.init({ liffId: APP_CONFIG.LIFF_ID });
+    }
     state.ready = true;
     state.previewOnly = false;
     state.context = safelyGetLiffContext();
@@ -121,10 +130,13 @@ export function safelyGetLiffContext() {
   return null;
 }
 
-// 送り先選び（shareTargetPicker）が使えるかを返す
+// 送り先選び（shareTargetPicker）が使えるかを返す（Q キットの LineShareLiff.canShare と同じ）
 function isLiffShareAvailable(isReady) {
   if (!window.liff || !isReady) {
     return false;
+  }
+  if (window.LineShareLiff) {
+    return window.LineShareLiff.canShare();
   }
 
   if (typeof window.liff.shareTargetPicker !== "function") {
@@ -146,6 +158,9 @@ function isLiffShareAvailable(isReady) {
 
 // LINE アプリの中か、ログインしているか（送り先選びが使えない理由を分けて案内する）
 export function getLiffEnvironment() {
+  if (window.LineShareLiff) {
+    return window.LineShareLiff.environment();
+  }
   const liff = window.liff;
   if (!liff) {
     return { inClient: false, loggedIn: false };
@@ -165,6 +180,10 @@ export function getLiffEnvironment() {
 export function loginWithLine() {
   if (!window.liff || typeof window.liff.login !== "function") {
     return false;
+  }
+  // ?draft= は開いたときに読んで URL から消しているので、Q キットのログイン（今のページに戻る）と同じ
+  if (window.LineShareLiff) {
+    return window.LineShareLiff.login();
   }
   const url = new URL(window.location.href);
   url.searchParams.delete("draft");

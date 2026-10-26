@@ -3,12 +3,12 @@
 import {
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
   getCreditText
-} from "./js/card.js?v=202610261900";
+} from "./js/card.js?v=202610262400";
 import {
   EXERCISE_CATALOG,
   MENU_PRESETS,
   MUSCLE_FILTERS
-} from "./js/catalog.js?v=202610261900";
+} from "./js/catalog.js?v=202610262400";
 import {
   renderButton,
   renderChip,
@@ -17,16 +17,16 @@ import {
   renderField,
   renderSheet,
   renderStartButton
-} from "./js/components.js?v=202610261900";
+} from "./js/components.js?v=202610262400";
 import {
   buildSampleWorkout,
   mockRanking
-} from "./js/fixtures.js?v=202610261900";
+} from "./js/fixtures.js?v=202610262400";
 import {
   cssEscape,
   escapeHtml,
   formatLocaleMetric
-} from "./js/format.js?v=202610261900";
+} from "./js/format.js?v=202610262400";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -34,19 +34,19 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./js/liff.js?v=202610261900";
+} from "./js/liff.js?v=202610262400";
 import {
   encodeBase64Url,
   packWorkoutDraft,
   readPackedWorkout,
   unpackWorkoutDraft
-} from "./js/link.js?v=202610261900";
+} from "./js/link.js?v=202610262400";
 import {
   deepClone,
   generateId,
   getTodayLocalDate,
   seasonal
-} from "./js/page.js?v=202610261900";
+} from "./js/page.js?v=202610262400";
 import {
   APP_CONFIG,
   DEFAULT_THEME,
@@ -55,20 +55,20 @@ import {
   MAX_HISTORY_ITEMS,
   MAX_MENUS,
   STORAGE_KEYS
-} from "./js/settings.js?v=202610261900";
+} from "./js/settings.js?v=202610262400";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./js/store.js?v=202610261900";
-import { startOfWeek, weekStreak } from "./js/streak.js?v=202610261900";
+} from "./js/store.js?v=202610262400";
+import { startOfWeek, weekStreak } from "./js/streak.js?v=202610262400";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./js/theme.js?v=202610261900";
+} from "./js/theme.js?v=202610262400";
 import {
   buildMenuFromWorkout,
   calculateWorkout,
@@ -89,7 +89,7 @@ import {
   sanitizeWorkout as sanitizeWorkoutModel,
   summarizeMenu,
   TEXT_LIMITS
-} from "./js/workout.js?v=202610261900";
+} from "./js/workout.js?v=202610262400";
 
 (function () {
 
@@ -215,6 +215,8 @@ import {
     if (!restoreCarriedDraft() && resumed) {
       showResumed();
     }
+    // 読み終えた URL の ?〜（?draft=・?menu= を読んだあと）を片づける（ほかのツールと同じ。LIFF・ログインの戻りの印は残す）
+    if (window.LineShareLiff) window.LineShareLiff.tidyUrl();
 
     syncWorkoutUser();
     renderInput();
@@ -236,8 +238,6 @@ import {
     elements.copyJsonButton = document.getElementById("copy-json-button");
     elements.shareButton = document.getElementById("share-button");
     elements.lineHelp = document.getElementById("line-help");
-    elements.lineLoginButton = document.getElementById("line-login-button");
-    elements.lineAppLink = document.getElementById("line-app-link");
   }
 
   // 押す・入力・スクロール・開け閉めを受けるしかけを付ける
@@ -662,7 +662,8 @@ import {
     }
 
     try {
-      const result = await window.liff.shareTargetPicker([message]);
+      // 送り先選びは Q キットの LineShareLiff.share（二度押しでも1回だけ開く・送れたかの見方がほかのツールと同じ）
+      const result = window.LineShareLiff ? await window.LineShareLiff.share([message]) : await window.liff.shareTargetPicker([message]);
       if (result) {
         // 履歴に残すのは送れたときだけ（送るのをやめた記録が、履歴・次の「前回」に入らないように）
         // いっぱいのときは、いちばん古い記録があふれて消える。消えた記録は、あとで控えを保存できるように覚えておく
@@ -681,7 +682,7 @@ import {
           window.LineShareUI.afterSent({
             // 「続けて別のトークにも送る」：同じカードを、もう一度送り先を選んで送る。送れたら true
             resend: async function () {
-              return Boolean(await window.liff.shareTargetPicker([message]));
+              return Boolean(window.LineShareLiff ? await window.LineShareLiff.share([message]) : await window.liff.shareTargetPicker([message]));
             }
           });
         } else {
@@ -767,6 +768,7 @@ import {
     ].join("");
 
     elements.tabInput.innerHTML = html;
+    renderSettingsFold();
     updateActionBar();
   }
 
@@ -1218,6 +1220,23 @@ import {
     "open-settings-modal": function () {
       openSettingsSheet();
     },
+    // 「⚙️ 設定」：シートを閉じて、ページの下の設定の欄を開く
+    "open-settings-fold": function () {
+      appState.ui.settingsModalOpen = false;
+      renderInput();
+      // シートを閉じると、ページの位置がシートを開く前にもどるので、閉じ終わってから動かす
+      window.setTimeout(function () {
+        if (window.QLineMe) {
+          window.QLineMe.openFold("settings");
+          return;
+        }
+        const fold = document.getElementById("settings");
+        if (fold) {
+          fold.open = true;
+          fold.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 80);
+    },
     "close-settings-modal": function () {
       appState.ui.settingsModalOpen = false;
       renderInput();
@@ -1467,23 +1486,36 @@ import {
     if (!show) {
       return;
     }
-    const env = getLiffEnvironment();
-    // LINE アプリの中で使えないときはログインでは直らないので、ログインのボタンは出さない
-    elements.lineLoginButton.hidden = !appState.liff.ready || env.inClient || env.loggedIn;
-    const appUrl = buildLineAppUrl(encodedDraft());
-    elements.lineAppLink.hidden = !appUrl || env.inClient;
-    elements.lineAppLink.href = appUrl || "#";
+    // 中身は Q キットの案内（ほかのツールと同じ言葉）。LINE 版で開くボタンは、押した瞬間の入力を持っていく。
+    // ログインの前に入力をこのブラウザに残す。LINE アプリの中で使えないときはログインでは直らないので出さない（outsideHelp が決める）
+    const shown = window.LineShareLiff
+      ? window.LineShareLiff.outsideHelp(elements.lineHelp, {
+          appUrl: function () {
+            return buildLineAppUrl(encodedDraft());
+          },
+          beforeLogin: keepDraftForLogin,
+          canLogin: appState.liff.ready
+        })
+      : false;
+    if (!shown) {
+      elements.lineHelp.hidden = true;
+      elements.shareButton.hidden = false;
+    }
   }
 
-  // 🔑 ログインして送る：入力をこのブラウザに残してから、LINE のログインへ
-  function startLineLogin() {
-    // ログインの行き来で入力が消えないよう、このブラウザに一時的に残す
+  // ログインの行き来で入力が消えないよう、このブラウザに一時的に残す
+  function keepDraftForLogin() {
     try {
       const draft = encodedDraft();
       if (draft) sessionStorage.setItem(DRAFT_KEY, draft);
     } catch (error) {
       console.warn("Failed to keep draft:", error);
     }
+  }
+
+  // 🔑 ログインして送る：入力をこのブラウザに残してから、LINE のログインへ
+  function startLineLogin() {
+    keepDraftForLogin();
     if (!loginWithLine()) {
       notify("ログインを始められませんでした。少し待って、もう一度押してね。", "warn");
     }
@@ -2035,14 +2067,31 @@ import {
     if (!appState.ui.settingsModalOpen) {
       return "";
     }
-    const color = escapeHtml(appState.theme.baseColor || DEFAULT_THEME.baseColor);
     return renderSheet({
-      label: "あなたの記録と表示設定",
+      label: "あなたの記録",
       title: "あなたの記録",
       closeAction: "close-settings-modal",
       body: [
         renderLoginRows(),
         renderGrass(),
+        // 設定はページの下の「⚙️ 設定」に1つ（Q のツールの決まり。q-oqrn の ux.md A7）
+        renderButton({ label: "⚙️ 設定（週のはじまり・色）", action: "open-settings-fold" })
+      ].join("")
+    });
+  }
+
+  // ページの下の「⚙️ 設定」の中身（週のはじまり・表示の色）を描きなおす（index.html の #settings-body）
+  function renderSettingsFold() {
+    const host = document.getElementById("settings-body");
+    if (!host) {
+      return;
+    }
+    const color = escapeHtml(appState.theme.baseColor || DEFAULT_THEME.baseColor);
+    // 色を入れている途中（入力欄にいる）は描きなおさない（打っている文字が消えないように）
+    if (host.contains(document.activeElement) && document.activeElement.matches("input[type=text]")) {
+      return;
+    }
+    host.innerHTML = [
         renderWeekStartField(),
         '<h4 class="sheet-subtitle">表示設定</h4>',
         '<p class="ls-hint">アプリと送信プレビューの基調色を変更できます。</p>',
@@ -2062,8 +2111,7 @@ import {
         '<div class="settings-actions">',
         renderButton({ label: "初期色に戻す", className: "is-danger", action: "reset-theme" }),
         "</div>"
-      ].join("")
-    });
+      ].join("");
   }
 
   // ---- 週のはじまり（Q 共通の設定。q-oqrn の shared/week-start.js。はじめは月曜） ----
