@@ -3,12 +3,12 @@
 import {
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
   getCreditText
-} from "./js/card.js?v=202610261500";
+} from "./js/card.js?v=202610261700";
 import {
   EXERCISE_CATALOG,
   MENU_PRESETS,
   MUSCLE_FILTERS
-} from "./js/catalog.js?v=202610261500";
+} from "./js/catalog.js?v=202610261700";
 import {
   renderButton,
   renderChip,
@@ -17,16 +17,16 @@ import {
   renderField,
   renderSheet,
   renderStartButton
-} from "./js/components.js?v=202610261500";
+} from "./js/components.js?v=202610261700";
 import {
   buildSampleWorkout,
   mockRanking
-} from "./js/fixtures.js?v=202610261500";
+} from "./js/fixtures.js?v=202610261700";
 import {
   cssEscape,
   escapeHtml,
   formatLocaleMetric
-} from "./js/format.js?v=202610261500";
+} from "./js/format.js?v=202610261700";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -34,19 +34,19 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./js/liff.js?v=202610261500";
+} from "./js/liff.js?v=202610261700";
 import {
   encodeBase64Url,
   packWorkoutDraft,
   readPackedWorkout,
   unpackWorkoutDraft
-} from "./js/link.js?v=202610261500";
+} from "./js/link.js?v=202610261700";
 import {
   deepClone,
   generateId,
   getTodayLocalDate,
   seasonal
-} from "./js/page.js?v=202610261500";
+} from "./js/page.js?v=202610261700";
 import {
   APP_CONFIG,
   DEFAULT_THEME,
@@ -55,20 +55,20 @@ import {
   MAX_HISTORY_ITEMS,
   MAX_MENUS,
   STORAGE_KEYS
-} from "./js/settings.js?v=202610261500";
+} from "./js/settings.js?v=202610261700";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./js/store.js?v=202610261500";
-import { startOfWeek, weekStreak } from "./js/streak.js?v=202610261500";
+} from "./js/store.js?v=202610261700";
+import { startOfWeek, weekStreak } from "./js/streak.js?v=202610261700";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./js/theme.js?v=202610261500";
+} from "./js/theme.js?v=202610261700";
 import {
   buildMenuFromWorkout,
   calculateWorkout,
@@ -89,7 +89,7 @@ import {
   sanitizeWorkout as sanitizeWorkoutModel,
   summarizeMenu,
   TEXT_LIMITS
-} from "./js/workout.js?v=202610261500";
+} from "./js/workout.js?v=202610261700";
 
 (function () {
 
@@ -665,9 +665,14 @@ import {
       const result = await window.liff.shareTargetPicker([message]);
       if (result) {
         // 履歴に残すのは送れたときだけ（送るのをやめた記録が、履歴・次の「前回」に入らないように）
+        // いっぱいのときは、いちばん古い記録があふれて消える。消えた記録は、あとで控えを保存できるように覚えておく
+        const before = appState.history.slice();
         await saveWorkout(shareableWorkout);
         appState.history = loadWorkoutHistory();
+        const kept = new Set(appState.history.map((item) => item.workoutId));
+        const dropped = before.filter((item) => !kept.has(item.workoutId));
         renderHistory();
+        renderShell();
         // 送った記録は、次に開いたときの「前回の続き」にしない
         sentDraft = JSON.stringify(packWorkoutDraft(appState.workout));
         keepLocalDraft();
@@ -681,6 +686,20 @@ import {
           });
         } else {
           notify(seasonal("送りました。"), "info");
+        }
+        if (dropped.length) {
+          const name = [formatShortDate(dropped[0].date), String(dropped[0].title || "").trim()].filter(Boolean).join(" ");
+          window.setTimeout(function () {
+            if (window.LineShareUI && typeof window.LineShareUI.toast === "function") {
+              window.LineShareUI.toast("📦 履歴がいっぱいなので、いちばん古い記録" + (name ? "（" + name + "）" : "") + "を消しました。", {
+                actionLabel: "控えを保存",
+                onAction: function () {
+                  void downloadHistory("", dropped);
+                },
+                ms: 9000
+              });
+            }
+          }, 600);
         }
       } else {
         notify("送るのをやめました。入れた記録は残っています。", "info");
@@ -857,7 +876,10 @@ import {
 
     const html = [
       '<div class="history-tools">',
-      '  <p class="history-tools-count">' + escapeHtml(String(appState.history.length)) + " / " + MAX_HISTORY_ITEMS + "件の記録</p>",
+      '  <p class="history-tools-count' + (appState.history.length >= MAX_HISTORY_ITEMS - 1 ? " is-warn" : "") + '">' +
+        escapeHtml(String(appState.history.length)) + " / " + MAX_HISTORY_ITEMS + "件の記録" +
+        (appState.history.length >= MAX_HISTORY_ITEMS ? "（いっぱい。次に送ると、いちばん古い記録が消えます）" : appState.history.length === MAX_HISTORY_ITEMS - 1 ? "（あと1件でいっぱい）" : "") +
+        "</p>",
       renderButton({ label: "⬇ 記録をダウンロード", action: "download-history" }),
       "</div>",
       '<p class="ls-hint small history-limit">この端末に残るのは、新しいものから ' + MAX_HISTORY_ITEMS + " 件までです。それより古い記録は消えるので、残したいときは「記録をダウンロード」で控えを。</p>",
@@ -941,8 +963,11 @@ import {
   }
 
   // 履歴（month を渡すとその月だけ）を CSV でダウンロードする。LINE 版では共有メニューかコピー
-  async function downloadHistory(month) {
-    const list = month
+  // only：その記録だけ（送ったときに履歴からあふれた記録の控えなど）
+  async function downloadHistory(month, only) {
+    const list = only
+      ? only
+      : month
       ? appState.history.filter(function (workout) {
           return historyMonthKey(workout) === month;
         })
@@ -1321,7 +1346,9 @@ import {
       if (tab === "input") {
         button.innerHTML = renderTabButtonLabel("入力", "");
       } else if (tab === "history") {
-        button.innerHTML = renderTabButtonLabel("履歴", String(appState.history.length) + "件");
+        // いっぱいに近い（あと1件・いっぱい）ときは「10/10件」をオレンジに
+        const near = appState.history.length >= MAX_HISTORY_ITEMS - 1;
+        button.innerHTML = renderTabButtonLabel("履歴", near ? appState.history.length + "/" + MAX_HISTORY_ITEMS + "件" : String(appState.history.length) + "件", near);
       } else if (tab === "ranking") {
         button.innerHTML = renderTabButtonLabel("ランキング", "");
       }
@@ -1329,8 +1356,8 @@ import {
   }
 
   // タブの名前（大きな字と下の小さな字）の HTML を返す
-  function renderTabButtonLabel(main, sub) {
-    return '<span class="tab-main">' + escapeHtml(main) + '</span><span class="tab-sub">' + escapeHtml(sub || "") + "</span>";
+  function renderTabButtonLabel(main, sub, warn) {
+    return '<span class="tab-main">' + escapeHtml(main) + '</span><span class="tab-sub' + (warn ? " is-warn" : "") + '">' + escapeHtml(sub || "") + "</span>";
   }
 
   // タブ → 描く関数・パネルの要素（知らないタブは入力）

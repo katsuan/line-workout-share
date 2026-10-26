@@ -2,13 +2,13 @@
 // app.js・card.js から読む（import）
 import {
   APP_CONFIG
-} from "./settings.js?v=202610261500";
+} from "./settings.js?v=202610261700";
 import {
   createWorkoutFromMenu,
   getNamedExercises,
   NUMBER_MAX,
   TEXT_LIMITS
-} from "./workout.js?v=202610261500";
+} from "./workout.js?v=202610261700";
 
 // 受けとった人が、同じ種目・セットで始められるリンク（?menu=）。メモは入れない（自分用の書きこみのため）。
 // LINE のボタンの URL は 1000 字まで：入らなければ重さを外し、それでも入らなければ種目を減らす。どうしても入らなければ null

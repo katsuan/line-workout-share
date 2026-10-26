@@ -16,6 +16,11 @@
   font-weight: 700;
 }
 
+/* いっぱいに近いとき（あと1件・いっぱい）はオレンジ */
+.history-tools-count.is-warn {
+  color: #b35f00;
+}
+
 .history-month-title {
   flex: 1;
 }
@@ -343,4 +348,16 @@
   color: var(--ls-subtext);
   font-size: 0.9rem;
   line-height: 1.5;
+}
+
+/* 履歴タブの件数：いっぱいに近いときはオレンジ（css/base.css の .tab-sub） */
+.tab-sub.is-warn {
+  color: #b35f00;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-ls-dark="auto"] .history-tools-count.is-warn,
+  :root[data-ls-dark="auto"] .tab-sub.is-warn {
+    color: #ffb04d;
+  }
 }

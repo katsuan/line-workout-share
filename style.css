@@ -1,5 +1,5 @@
 /* キロっくの見た目。部品は Q キット（index.html で先に読む ui.css）。ここにはキロっくの色と字と、キロっくにしかない見た目だけ */
-@import "./css/base.css?v=202610261500";
-@import "./css/input.css?v=202610261500";
-@import "./css/preview.css?v=202610261500";
-@import "./css/history.css?v=202610261500";
+@import "./css/base.css?v=202610261700";
+@import "./css/input.css?v=202610261700";
+@import "./css/preview.css?v=202610261700";
+@import "./css/history.css?v=202610261700";
