@@ -3,12 +3,12 @@
 import {
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
   getCreditText
-} from "./js/card.js?v=202610262400";
+} from "./js/card.js?v=202610271258";
 import {
   EXERCISE_CATALOG,
   MENU_PRESETS,
   MUSCLE_FILTERS
-} from "./js/catalog.js?v=202610262400";
+} from "./js/catalog.js?v=202610271258";
 import {
   renderButton,
   renderChip,
@@ -17,16 +17,16 @@ import {
   renderField,
   renderSheet,
   renderStartButton
-} from "./js/components.js?v=202610262400";
+} from "./js/components.js?v=202610271258";
 import {
   buildSampleWorkout,
   mockRanking
-} from "./js/fixtures.js?v=202610262400";
+} from "./js/fixtures.js?v=202610271258";
 import {
   cssEscape,
   escapeHtml,
   formatLocaleMetric
-} from "./js/format.js?v=202610262400";
+} from "./js/format.js?v=202610271258";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -34,19 +34,19 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./js/liff.js?v=202610262400";
+} from "./js/liff.js?v=202610271258";
 import {
   encodeBase64Url,
   packWorkoutDraft,
   readPackedWorkout,
   unpackWorkoutDraft
-} from "./js/link.js?v=202610262400";
+} from "./js/link.js?v=202610271258";
 import {
   deepClone,
   generateId,
   getTodayLocalDate,
   seasonal
-} from "./js/page.js?v=202610262400";
+} from "./js/page.js?v=202610271258";
 import {
   APP_CONFIG,
   DEFAULT_THEME,
@@ -55,20 +55,20 @@ import {
   MAX_HISTORY_ITEMS,
   MAX_MENUS,
   STORAGE_KEYS
-} from "./js/settings.js?v=202610262400";
+} from "./js/settings.js?v=202610271258";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./js/store.js?v=202610262400";
-import { startOfWeek, weekStreak } from "./js/streak.js?v=202610262400";
+} from "./js/store.js?v=202610271258";
+import { startOfWeek, weekStreak } from "./js/streak.js?v=202610271258";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./js/theme.js?v=202610262400";
+} from "./js/theme.js?v=202610271258";
 import {
   buildMenuFromWorkout,
   calculateWorkout,
@@ -89,7 +89,7 @@ import {
   sanitizeWorkout as sanitizeWorkoutModel,
   summarizeMenu,
   TEXT_LIMITS
-} from "./js/workout.js?v=202610262400";
+} from "./js/workout.js?v=202610271258";
 
 (function () {
 
@@ -656,7 +656,7 @@ import {
           );
         }
       } else {
-        notify("ここでは見本だけ。送るときは、下の「ログインして送る」か「LINE 版で開く」から。", "warn");
+        notify("ブラウザ版では送れません。下の「🔑 ログインして送る」か「📱 LINE 版で開く」から送れます。", "warn");
       }
       return;
     }
@@ -2026,7 +2026,7 @@ import {
       ? '<img class="user-avatar-image" src="' + escapeHtml(profile.pictureUrl) + '" alt="" />'
       : '<span class="user-avatar-fallback">' + escapeHtml(getUserInitial(profile.displayName)) + "</span>";
     return [
-      '<button class="user-avatar-button" data-action="open-settings-modal" type="button" aria-label="記録の草グラフと表示設定を開く" title="表示設定">',
+      '<button class="user-avatar-button" data-action="open-settings-modal" type="button" aria-label="あなたの記録（草グラフ・連続）を開く" title="あなたの記録">',
       '  <span class="user-avatar">' + avatar + "</span>",
       "</button>"
     ].join("");
@@ -2062,7 +2062,7 @@ import {
     );
   }
 
-  // 表示設定のシート（草グラフ・週のはじまり・色）の HTML を返す。閉じているときは ""
+  // 「あなたの記録」のシート（ログイン・草グラフ・連続と、ページの下の「⚙️ 設定」へのボタン）の HTML を返す。閉じているときは ""
   function renderSettingsSheet() {
     if (!appState.ui.settingsModalOpen) {
       return "";
@@ -2093,7 +2093,7 @@ import {
     }
     host.innerHTML = [
         renderWeekStartField(),
-        '<h4 class="sheet-subtitle">表示設定</h4>',
+        '<h4 class="sheet-subtitle">色</h4>',
         '<p class="ls-hint">アプリと送信プレビューの基調色を変更できます。</p>',
         '<div class="settings-color-row">',
         renderField({

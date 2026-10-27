@@ -6,7 +6,7 @@ import {
   APP_CONFIG,
   DEFAULT_USER,
   STORAGE_KEYS
-} from "./settings.js?v=202610262400";
+} from "./settings.js?v=202610271258";
 
 // LIFF を準備して、使えるか・送れるか・LINE の名前を返す（使えないときも止めない）
 export async function initLiff({ cachedProfile }) {
