@@ -3,12 +3,12 @@
 import {
   buildWorkoutFlexMessage as buildWorkoutFlexPayload,
   getCreditText
-} from "./js/card.js?v=202610271258";
+} from "./js/card.js?v=202610291748";
 import {
   EXERCISE_CATALOG,
   MENU_PRESETS,
   MUSCLE_FILTERS
-} from "./js/catalog.js?v=202610271258";
+} from "./js/catalog.js?v=202610291748";
 import {
   renderButton,
   renderChip,
@@ -17,16 +17,17 @@ import {
   renderField,
   renderSheet,
   renderStartButton
-} from "./js/components.js?v=202610271258";
+} from "./js/components.js?v=202610291748";
 import {
   buildSampleWorkout,
   mockRanking
-} from "./js/fixtures.js?v=202610271258";
+} from "./js/fixtures.js?v=202610291748";
 import {
   cssEscape,
   escapeHtml,
   formatLocaleMetric
-} from "./js/format.js?v=202610271258";
+} from "./js/format.js?v=202610291748";
+import { buildHistoryCsv } from "./js/history-csv.js?v=202610291748";
 import {
   buildLineAppUrl,
   getLiffEnvironment,
@@ -34,19 +35,19 @@ import {
   loadCachedProfile,
   loginWithLine,
   safelyGetLiffContext
-} from "./js/liff.js?v=202610271258";
+} from "./js/liff.js?v=202610291748";
 import {
   encodeBase64Url,
   packWorkoutDraft,
   readPackedWorkout,
   unpackWorkoutDraft
-} from "./js/link.js?v=202610271258";
+} from "./js/link.js?v=202610291748";
 import {
   deepClone,
   generateId,
   getTodayLocalDate,
   seasonal
-} from "./js/page.js?v=202610271258";
+} from "./js/page.js?v=202610291748";
 import {
   APP_CONFIG,
   DEFAULT_THEME,
@@ -55,20 +56,20 @@ import {
   MAX_HISTORY_ITEMS,
   MAX_MENUS,
   STORAGE_KEYS
-} from "./js/settings.js?v=202610271258";
+} from "./js/settings.js?v=202610291748";
 import {
   createApiWorkoutRepository,
   createLocalStorageMenuRepository,
   createLocalStorageWorkoutRepository
-} from "./js/store.js?v=202610271258";
-import { startOfWeek, weekStreak } from "./js/streak.js?v=202610271258";
+} from "./js/store.js?v=202610291748";
+import { startOfWeek, weekStreak } from "./js/streak.js?v=202610291748";
 import {
   applyTheme,
   getFlexTheme as buildFlexTheme,
   loadThemePreference,
   normalizeHexColor,
   saveThemePreference
-} from "./js/theme.js?v=202610271258";
+} from "./js/theme.js?v=202610291748";
 import {
   buildMenuFromWorkout,
   calculateWorkout,
@@ -89,7 +90,7 @@ import {
   sanitizeWorkout as sanitizeWorkoutModel,
   summarizeMenu,
   TEXT_LIMITS
-} from "./js/workout.js?v=202610271258";
+} from "./js/workout.js?v=202610291748";
 
 (function () {
 
@@ -638,26 +639,7 @@ import {
     const message = buildWorkoutFlexMessage(shareableWorkout);
 
     if (!appState.liff.ready || !appState.liff.shareAvailable) {
-      appState.activeTab = "preview";
-      appState.ui.openJsonPreview = isDebugModeEnabled();
-      renderShell();
-      renderPreview();
-      if (isDebugModeEnabled()) {
-        const copied = await copyText(JSON.stringify(message, null, 2));
-        if (copied) {
-          notify(
-            "shareTargetPicker が使えないため、デバッグ用に Flex JSON をコピーしました。",
-            "warn"
-          );
-        } else {
-          notify(
-            "shareTargetPicker が使えないため、デバッグ用に Flex JSON プレビューを表示しています。",
-            "warn"
-          );
-        }
-      } else {
-        notify("ブラウザ版では送れません。下の「🔑 ログインして送る」か「📱 LINE 版で開く」から送れます。", "warn");
-      }
+      await showUnsendable(message);
       return;
     }
 
@@ -665,43 +647,7 @@ import {
       // 送り先選びは Q キットの LineShareLiff.share（二度押しでも1回だけ開く・送れたかの見方がほかのツールと同じ）
       const result = window.LineShareLiff ? await window.LineShareLiff.share([message]) : await window.liff.shareTargetPicker([message]);
       if (result) {
-        // 履歴に残すのは送れたときだけ（送るのをやめた記録が、履歴・次の「前回」に入らないように）
-        // いっぱいのときは、いちばん古い記録があふれて消える。消えた記録は、あとで控えを保存できるように覚えておく
-        const before = appState.history.slice();
-        await saveWorkout(shareableWorkout);
-        appState.history = loadWorkoutHistory();
-        const kept = new Set(appState.history.map((item) => item.workoutId));
-        const dropped = before.filter((item) => !kept.has(item.workoutId));
-        renderHistory();
-        renderShell();
-        // 送った記録は、次に開いたときの「前回の続き」にしない
-        sentDraft = JSON.stringify(packWorkoutDraft(appState.workout));
-        keepLocalDraft();
-        // 送ったあと：続けて別のトークにも・閉じる・もう少し作る（Q キット）
-        if (window.LineShareUI && typeof window.LineShareUI.afterSent === "function") {
-          window.LineShareUI.afterSent({
-            // 「続けて別のトークにも送る」：同じカードを、もう一度送り先を選んで送る。送れたら true
-            resend: async function () {
-              return Boolean(window.LineShareLiff ? await window.LineShareLiff.share([message]) : await window.liff.shareTargetPicker([message]));
-            }
-          });
-        } else {
-          notify(seasonal("送りました。"), "info");
-        }
-        if (dropped.length) {
-          const name = [formatShortDate(dropped[0].date), String(dropped[0].title || "").trim()].filter(Boolean).join(" ");
-          window.setTimeout(function () {
-            if (window.LineShareUI && typeof window.LineShareUI.toast === "function") {
-              window.LineShareUI.toast("📦 履歴がいっぱいなので、いちばん古い記録" + (name ? "（" + name + "）" : "") + "を消しました。", {
-                actionLabel: "控えを保存",
-                onAction: function () {
-                  void downloadHistory("", dropped);
-                },
-                ms: 9000
-              });
-            }
-          }, 600);
-        }
+        await afterShared(shareableWorkout, message);
       } else {
         notify("送るのをやめました。入れた記録は残っています。", "info");
       }
@@ -717,6 +663,71 @@ import {
           : "送れませんでした。少し待って、もう一度押してね。",
         "error"
       );
+    }
+  }
+
+  // 送れない（ブラウザ版・shareTargetPicker が使えない）とき：送る見本のタブを出して、送り方を知らせる（デバッグなら Flex JSON をコピー）
+  async function showUnsendable(message) {
+    appState.activeTab = "preview";
+    appState.ui.openJsonPreview = isDebugModeEnabled();
+    renderShell();
+    renderPreview();
+    if (isDebugModeEnabled()) {
+      const copied = await copyText(JSON.stringify(message, null, 2));
+      if (copied) {
+        notify(
+          "shareTargetPicker が使えないため、デバッグ用に Flex JSON をコピーしました。",
+          "warn"
+        );
+      } else {
+        notify(
+          "shareTargetPicker が使えないため、デバッグ用に Flex JSON プレビューを表示しています。",
+          "warn"
+        );
+      }
+    } else {
+      notify("ブラウザ版では送れません。下の「🔑 ログインして送る」か「📱 LINE 版で開く」から送れます。", "warn");
+    }
+  }
+
+  // 送れたあと：履歴に残し（あふれた古い記録は「控えを保存」を出す）、作りかけを片づけ、続けて送る・閉じるを出す
+  async function afterShared(shareableWorkout, message) {
+    // 履歴に残すのは送れたときだけ（送るのをやめた記録が、履歴・次の「前回」に入らないように）
+    // いっぱいのときは、いちばん古い記録があふれて消える。消えた記録は、あとで控えを保存できるように覚えておく
+    const before = appState.history.slice();
+    await saveWorkout(shareableWorkout);
+    appState.history = loadWorkoutHistory();
+    const kept = new Set(appState.history.map((item) => item.workoutId));
+    const dropped = before.filter((item) => !kept.has(item.workoutId));
+    renderHistory();
+    renderShell();
+    // 送った記録は、次に開いたときの「前回の続き」にしない
+    sentDraft = JSON.stringify(packWorkoutDraft(appState.workout));
+    keepLocalDraft();
+    // 送ったあと：続けて別のトークにも・閉じる・もう少し作る（Q キット）
+    if (window.LineShareUI && typeof window.LineShareUI.afterSent === "function") {
+      window.LineShareUI.afterSent({
+        // 「続けて別のトークにも送る」：同じカードを、もう一度送り先を選んで送る。送れたら true
+        resend: async function () {
+          return Boolean(window.LineShareLiff ? await window.LineShareLiff.share([message]) : await window.liff.shareTargetPicker([message]));
+        }
+      });
+    } else {
+      notify(seasonal("送りました。"), "info");
+    }
+    if (dropped.length) {
+      const name = [formatShortDate(dropped[0].date), String(dropped[0].title || "").trim()].filter(Boolean).join(" ");
+      window.setTimeout(function () {
+        if (window.LineShareUI && typeof window.LineShareUI.toast === "function") {
+          window.LineShareUI.toast("📦 履歴がいっぱいなので、いちばん古い記録" + (name ? "（" + name + "）" : "") + "を消しました。", {
+            actionLabel: "控えを保存",
+            onAction: function () {
+              void downloadHistory("", dropped);
+            },
+            ms: 9000
+          });
+        }
+      }, 600);
     }
   }
 
@@ -924,45 +935,8 @@ import {
     return key === "none" ? "日付なし" : Number(key.slice(0, 4)) + "年" + Number(key.slice(5, 7)) + "月";
   }
 
-  // ---- 記録のダウンロード（CSV。Excel・Google スプレッドシートで開ける） ----
-  // 1行が1セット。重さ 0 は「自重」、回数 0 は「挑戦」と備考に入れる。
+  // ---- 記録のダウンロード（CSV。中身は js/history-csv.js） ----
   // LINE の中のブラウザはファイルを保存できないことが多いので、そこでは共有メニュー（ファイル）→ だめならコピー
-  function buildHistoryCsv(workouts) {
-    // CSV の1つのます目の文字を返す（, " 改行があれば " でかこむ）
-    const cell = function (value) {
-      const text = value === null || value === undefined ? "" : String(value);
-      return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
-    };
-    const rows = [["日付", "タイトル", "種目", "部位", "セット", "重さ(kg)", "回数", "推定RM(kg)", "備考", "メモ"]];
-    workouts
-      .slice()
-      .sort(function (a, b) {
-        return String(a.date || "").localeCompare(String(b.date || ""));
-      })
-      .forEach(function (workout) {
-        const title = resolveWorkoutTitle(workout.title, workout.user);
-        (workout.exercises || []).forEach(function (exercise) {
-          (exercise.sets || []).forEach(function (set, index) {
-            const note = Number(set.weight) === 0 ? "自重" : Number(set.reps) === 0 ? "挑戦" : "";
-            rows.push([
-              workout.date || "",
-              title,
-              exercise.name || "",
-              exercise.primaryMuscle || "",
-              index + 1,
-              set.weight,
-              set.reps,
-              Number(set.estimated1rm) > 0 ? set.estimated1rm : "",
-              note,
-              index === 0 ? exercise.memo || "" : ""
-            ]);
-          });
-        });
-      });
-    return rows.map(function (row) {
-      return row.map(cell).join(",");
-    }).join("\r\n");
-  }
 
   // 履歴（month を渡すとその月だけ）を CSV でダウンロードする。LINE 版では共有メニューかコピー
   // only：その記録だけ（送ったときに履歴からあふれた記録の控えなど）

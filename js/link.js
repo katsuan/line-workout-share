@@ -2,13 +2,13 @@
 // app.js・card.js から読む（import）
 import {
   APP_CONFIG
-} from "./settings.js?v=202610271258";
+} from "./settings.js?v=202610291748";
 import {
   createWorkoutFromMenu,
   getNamedExercises,
   NUMBER_MAX,
   TEXT_LIMITS
-} from "./workout.js?v=202610271258";
+} from "./workout.js?v=202610291748";
 
 // 受けとった人が、同じ種目・セットで始められるリンク（?menu=）。メモは入れない（自分用の書きこみのため）。
 // LINE のボタンの URL は 1000 字まで：入らなければ重さを外し、それでも入らなければ種目を減らす。どうしても入らなければ null
@@ -134,7 +134,7 @@ export function encodeBase64Url(text) {
 }
 
 // base64url の文字を、もとの文字（UTF-8）にもどす
-export function decodeBase64Url(text) {
+function decodeBase64Url(text) {
   const b64 = String(text || "").replace(/-/g, "+").replace(/_/g, "/");
   const binary = atob(b64 + "===".slice((b64.length + 3) % 4));
   return new TextDecoder().decode(Uint8Array.from(binary, function (c) {

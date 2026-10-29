@@ -2,20 +2,20 @@
 // app.js・card.js・link.js から読む（import）
 import {
   EXERCISE_CATALOG
-} from "./catalog.js?v=202610271258";
+} from "./catalog.js?v=202610291748";
 import {
   roundNumber,
   toNullableNumber
-} from "./format.js?v=202610271258";
+} from "./format.js?v=202610291748";
 import {
   deepClone,
   generateId,
   getTodayLocalDate
-} from "./page.js?v=202610271258";
+} from "./page.js?v=202610291748";
 import {
   APP_CONFIG,
   DEFAULT_USER
-} from "./settings.js?v=202610271258";
+} from "./settings.js?v=202610291748";
 
 // 文字の長さの上限（入力欄の maxlength・送るカード・リンクの draft で同じ）
 export const TEXT_LIMITS = { title: 40, name: 60, memo: 200, catalogId: 40, muscle: 20, displayName: 20, altText: 400 };
@@ -319,11 +319,11 @@ export function summarizeMenu(menu) {
 }
 
 // 推定1RM を計算できるセット（重さも回数も 1 以上）かを返す
-export function isValidSetInput(weight, reps) {
+function isValidSetInput(weight, reps) {
   return weight !== null && reps !== null && weight > 0 && reps > 0;
 }
 
 // 記録として残すセット（重さ・回数が両方入っていればよい。0kg は自重、0回は挑戦の記録）
-export function isRecordedSetInput(weight, reps) {
+function isRecordedSetInput(weight, reps) {
   return weight !== null && reps !== null && weight >= 0 && reps >= 0;
 }
